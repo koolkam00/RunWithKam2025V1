@@ -18,7 +18,7 @@ struct SignInView: View {
                     Text("Run With Kam")
                         .font(.largeTitle)
                         .fontWeight(.bold)
-                        .foregroundColor(.red)
+                        .foregroundColor(.blue)
                     
                     Text("Sign in to get started")
                         .font(.title2)
@@ -57,7 +57,7 @@ struct SignInView: View {
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .frame(height: 50)
-                        .background(Color.red)
+                        .background(Color.blue)
                         .cornerRadius(25)
                 }
                 .padding(.horizontal, 40)

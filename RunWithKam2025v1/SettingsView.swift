@@ -39,7 +39,7 @@ struct SettingsView: View {
                     Button("Sign Out") {
                         signOut()
                     }
-                    .foregroundColor(.red)
+                    .foregroundColor(.blue)
                 }
             }
             .navigationTitle("Settings")

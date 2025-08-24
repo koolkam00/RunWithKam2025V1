@@ -26,7 +26,7 @@ struct RequestRunView: View {
                     Text("Request a Run")
                         .font(.title)
                         .fontWeight(.bold)
-                        .foregroundColor(.red)
+                        .foregroundColor(.blue)
                     
                     Text("Welcome back, \(firstName)!")
                         .font(.title2)
@@ -64,7 +64,7 @@ struct RequestRunView: View {
                                 in: minPace...maxPace,
                                 step: 0.1
                             )
-                            .accentColor(.red)
+                            .accentColor(.blue)
                             
                             Text("10:30")
                                 .font(.caption)
@@ -79,7 +79,7 @@ struct RequestRunView: View {
                             Text(paceString)
                                 .font(.title2)
                                 .fontWeight(.bold)
-                                .foregroundColor(.red)
+                                .foregroundColor(.blue)
                             
                             Text("/mile")
                                 .font(.body)

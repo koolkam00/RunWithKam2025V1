@@ -23,12 +23,12 @@ struct MainTabView: View {
                     }
             }
             .navigationBarHidden(true)
-            .accentColor(.red)
+                            .accentColor(.blue)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: { showingSettings = true }) {
                         Image(systemName: "gearshape.fill")
-                            .foregroundColor(.red)
+                            .foregroundColor(.blue)
                     }
                 }
             }

@@ -19,7 +19,7 @@ struct RunningCalendarView: View {
                     Text("Running Calendar")
                         .font(.title)
                         .fontWeight(.bold)
-                        .foregroundColor(.red)
+                        .foregroundColor(.blue)
                     
                     Text("View scheduled runs")
                         .font(.title2)
@@ -33,7 +33,7 @@ struct RunningCalendarView: View {
                     HStack {
                         Button(action: previousMonth) {
                             Image(systemName: "chevron.left")
-                                .foregroundColor(.red)
+                                .foregroundColor(.blue)
                                 .font(.title2)
                         }
                         
@@ -47,7 +47,7 @@ struct RunningCalendarView: View {
                         
                         Button(action: nextMonth) {
                             Image(systemName: "chevron.right")
-                                .foregroundColor(.red)
+                                .foregroundColor(.blue)
                                 .font(.title2)
                         }
                     }
@@ -255,7 +255,7 @@ struct CalendarDayView: View {
                 
                 if hasRuns {
                     Circle()
-                        .fill(Color.red)
+                        .fill(Color.blue)
                         .frame(width: 6, height: 6)
                 } else {
                     Color.clear
@@ -265,7 +265,7 @@ struct CalendarDayView: View {
             .frame(height: 40)
             .background(
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(isSelected ? Color.red.opacity(0.2) : Color.clear)
+                    .fill(isSelected ? Color.blue.opacity(0.2) : Color.clear)
             )
         }
         .buttonStyle(PlainButtonStyle())
@@ -281,7 +281,7 @@ struct RunCardView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(run.time)
                         .font(.headline)
-                        .foregroundColor(.red)
+                        .foregroundColor(.blue)
                     
                     Text(run.location)
                         .font(.subheadline)
@@ -294,7 +294,7 @@ struct RunCardView: View {
                     .font(.caption)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
-                    .background(Color.red.opacity(0.1))
+                    .background(Color.blue.opacity(0.1))
                     .cornerRadius(8)
             }
             
