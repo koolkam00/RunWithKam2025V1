@@ -1,3 +1,11 @@
+// RunWithKam Web Admin Panel
+// Handles run scheduling, editing, and real-time updates
+// 
+// TIMEZONE HANDLING:
+// All dates are handled in Eastern Standard Time (EST, UTC-5) for consistency
+// When you enter "September 24th 2025", it will always be treated as that exact date in EST
+// This ensures consistent behavior regardless of the user's local timezone
+
 // Global state
 let currentDate = new Date();
 let selectedDate = new Date();
@@ -265,7 +273,9 @@ function showEditRunModal(runId) {
     const runDate = new Date(run.date);
     
     // Extract just the date part (YYYY-MM-DD) from the UTC date
-    const dateString = runDate.toISOString().split('T')[0];
+    // Convert UTC to EST for display (EST is UTC-5)
+    const estDate = new Date(runDate.getTime() + (5 * 60 * 60 * 1000)); // Add 5 hours to convert from UTC to EST
+    const dateString = estDate.toISOString().split('T')[0];
     
     document.getElementById('runDate').value = dateString;
     document.getElementById('runTime').value = run.time;
@@ -376,8 +386,10 @@ async function handleRunSubmit(event) {
         return;
     }
     
-    // Create UTC date directly (no timezone conversion needed)
-    const utcDate = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+    // Create date in Eastern Standard Time (EST) - always UTC-5
+    // This ensures consistent timezone handling regardless of user's location
+    const estOffset = -5; // EST is UTC-5
+    const utcDate = new Date(Date.UTC(year, month - 1, day, estOffset, 0, 0, 0));
     
     // Format data consistently
     const runData = {
@@ -391,7 +403,9 @@ async function handleRunSubmit(event) {
     console.log('📅 Web admin sending data:', {
         originalDate: dateString,
         originalTime: timeString,
+        estDate: `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}T00:00:00-05:00`,
         utcDate: utcDate.toISOString(),
+        timezone: 'EST (UTC-5)',
         finalData: runData
     });
     
