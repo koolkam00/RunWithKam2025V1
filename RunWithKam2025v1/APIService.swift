@@ -10,14 +10,15 @@ struct APIResponse<T: Codable>: Codable {
 }
 
 // MARK: - API Service for RunWithKam
-class APIService: ObservableObject, UNUserNotificationCenterDelegate {
+class APIService: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
     static let shared = APIService()
     private let baseURL = "http://localhost:3000/api"
     
     @Published var isLoading = false
     @Published var errorMessage: String?
     
-    private init() {
+    private override init() {
+        super.init()
         // Request notification permissions when service is initialized
         requestNotificationPermissions()
         UNUserNotificationCenter.current().delegate = self
@@ -257,7 +258,7 @@ class APIService: ObservableObject, UNUserNotificationCenterDelegate {
         content.title = "New Run Scheduled! 🏃‍♂️"
         content.body = "Run with Kam at \(run.location) on \(formatDate(run.date)) at \(run.time)"
         content.sound = .default
-        content.badge = 1 // Add badge support
+        content.badge = NSNumber(value: 1) // Add badge support
         
         // Add run details to notification
         content.userInfo = [
@@ -295,7 +296,7 @@ class APIService: ObservableObject, UNUserNotificationCenterDelegate {
         content.title = "New Runs Added! 🏃‍♂️"
         content.body = "\(count) new runs have been scheduled. Check the calendar!"
         content.sound = .default
-        content.badge = count
+        content.badge = NSNumber(value: count)
         
         let request = UNNotificationRequest(
             identifier: "multiple-runs-\(Date().timeIntervalSince1970)",
@@ -333,7 +334,7 @@ class APIService: ObservableObject, UNUserNotificationCenterDelegate {
         content.title = "Test Notification! 🧪"
         content.body = "This is a test notification from RunWithKam"
         content.sound = .default
-        content.badge = 1
+        content.badge = NSNumber(value: 1)
         
         let request = UNNotificationRequest(
             identifier: "test-notification-\(Date().timeIntervalSince1970)",
