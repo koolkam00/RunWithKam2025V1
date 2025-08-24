@@ -42,15 +42,18 @@ class APIService: ObservableObject {
             throw APIError.serverError
         }
         
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        
         // Add debugging for date parsing
         print("📱 iOS App: Attempting to decode API response...")
         print("📱 iOS App: Raw data length: \(data.count) bytes")
         
+        // Try to print the raw JSON for debugging
+        if let jsonString = String(data: data, encoding: .utf8) {
+            print("📱 iOS App: Raw JSON response: \(jsonString)")
+        }
+        
         do {
-            let apiResponse = try decoder.decode(APIResponse<[ScheduledRun]>.self, from: data)
+            // Use our custom ScheduledRun decoder instead of the default JSONDecoder
+            let apiResponse = try decodeAPIResponse(from: data)
             print("📱 iOS App: Successfully decoded \(apiResponse.data.count) runs")
             
             // Log the first run's date for debugging
@@ -62,12 +65,6 @@ class APIService: ObservableObject {
             return apiResponse.data
         } catch {
             print("❌ iOS App: Decoding error: \(error)")
-            
-            // Try to print the raw JSON for debugging
-            if let jsonString = String(data: data, encoding: .utf8) {
-                print("📱 iOS App: Raw JSON response: \(jsonString)")
-            }
-            
             throw error
         }
     }
@@ -139,6 +136,34 @@ class APIService: ObservableObject {
         }
         
         return true
+    }
+    
+    // MARK: - Custom decoder for robust date parsing
+    private func decodeAPIResponse(from data: Data) throws -> APIResponse<[ScheduledRun]> {
+        // First try to decode the basic structure
+        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        guard let json = json,
+              let success = json["success"] as? Bool,
+              let dataArray = json["data"] as? [[String: Any]],
+              let count = json["count"] as? Int,
+              let message = json["message"] as? String else {
+            throw APIError.serverError
+        }
+        
+        // Manually decode each ScheduledRun to use our custom initializer
+        var runs: [ScheduledRun] = []
+        for (index, runData) in dataArray.enumerated() {
+            do {
+                let run = try ScheduledRun(from: runData)
+                runs.append(run)
+            } catch {
+                print("❌ iOS App: Failed to decode run at index \(index): \(error)")
+                print("❌ iOS App: Run data: \(runData)")
+                // Continue with other runs instead of failing completely
+            }
+        }
+        
+        return APIResponse(success: success, data: runs, count: runs.count, message: message)
     }
     
     // MARK: - Clear cache and force fresh data

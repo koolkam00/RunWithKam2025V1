@@ -64,7 +64,7 @@ struct RunningCalendarView: View {
                         }
                         
                         // Calendar days
-                        ForEach(calendarDays, id: \.self) { date in
+                        ForEach(Array(calendarDays.enumerated()), id: \.offset) { index, date in
                             if let date = date {
                                 CalendarDayView(
                                     date: date,
@@ -313,12 +313,155 @@ struct RunCardView: View {
 // MARK: - Data Models
 
 struct ScheduledRun: Identifiable, Codable {
-    let id: String  // Changed from UUID to String to match backend
+    let id: String
     let date: Date
     let time: String
     let location: String
     let pace: String
     let description: String
+    
+    // Custom coding keys to handle any potential date format issues
+    enum CodingKeys: String, CodingKey {
+        case id, date, time, location, pace, description
+    }
+    
+    // Custom initializer to handle date parsing more robustly
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        
+        id = try container.decode(String.self, forKey: .id)
+        time = try container.decode(String.self, forKey: .time)
+        location = try container.decode(String.self, forKey: .location)
+        pace = try container.decode(String.self, forKey: .pace)
+        description = try container.decode(String.self, forKey: .description)
+        
+        // Robust date parsing with multiple fallback strategies
+        let dateString = try container.decode(String.self, forKey: .date)
+        
+        // Try multiple date parsing strategies
+        if let parsedDate = parseDate(dateString) {
+            date = parsedDate
+        } else {
+            throw DecodingError.dataCorruptedError(
+                forKey: .date,
+                in: container,
+                debugDescription: "Unable to parse date string: \(dateString)"
+            )
+        }
+    }
+    
+    // Fallback initializer for creating runs programmatically
+    init(id: String, date: Date, time: String, location: String, pace: String, description: String) {
+        self.id = id
+        self.date = date
+        self.time = time
+        self.location = location
+        self.pace = pace
+        self.description = description
+    }
+    
+    // Custom initializer for dictionary data (used by our custom decoder)
+    init(from dictionary: [String: Any]) throws {
+        guard let id = dictionary["id"] as? String else {
+            throw DecodingError.dataCorruptedError(
+                forKey: .id,
+                in: DecodingError.Context(codingPath: [], debugDescription: "Missing or invalid id"),
+                debugDescription: "Expected string id, got \(dictionary["id"] ?? "nil")"
+            )
+        }
+        
+        guard let time = dictionary["time"] as? String else {
+            throw DecodingError.dataCorruptedError(
+                forKey: .time,
+                in: DecodingError.Context(codingPath: [], debugDescription: "Missing or invalid time"),
+                debugDescription: "Expected string time, got \(dictionary["time"] ?? "nil")"
+            )
+        }
+        
+        guard let location = dictionary["location"] as? String else {
+            throw DecodingError.dataCorruptedError(
+                forKey: .location,
+                in: DecodingError.Context(codingPath: [], debugDescription: "Missing or invalid location"),
+                debugDescription: "Expected string location, got \(dictionary["location"] ?? "nil")"
+            )
+        }
+        
+        guard let pace = dictionary["pace"] as? String else {
+            throw DecodingError.dataCorruptedError(
+                forKey: .pace,
+                in: DecodingError.Context(codingPath: [], debugDescription: "Missing or invalid pace"),
+                debugDescription: "Expected string pace, got \(dictionary["pace"] ?? "nil")"
+            )
+        }
+        
+        let description = dictionary["description"] as? String ?? ""
+        
+        guard let dateString = dictionary["date"] as? String else {
+            throw DecodingError.dataCorruptedError(
+                forKey: .date,
+                in: DecodingError.Context(codingPath: [], debugDescription: "Missing or invalid date"),
+                debugDescription: "Expected string date, got \(dictionary["date"] ?? "nil")"
+            )
+        }
+        
+        // Use our robust date parsing
+        guard let parsedDate = parseDate(dateString) else {
+            throw DecodingError.dataCorruptedError(
+                forKey: .date,
+                in: DecodingError.Context(codingPath: [], debugDescription: "Unable to parse date"),
+                debugDescription: "Could not parse date string: \(dateString)"
+            )
+        }
+        
+        self.id = id
+        self.date = parsedDate
+        self.time = time
+        self.location = location
+        self.pace = pace
+        self.description = description
+    }
+    
+    // Robust date parsing function
+    private func parseDate(_ dateString: String) -> Date? {
+        // Strategy 1: Try ISO8601 with fractional seconds
+        let iso8601Formatter = ISO8601DateFormatter()
+        iso8601Formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = iso8601Formatter.date(from: dateString) {
+            return date
+        }
+        
+        // Strategy 2: Try ISO8601 without fractional seconds
+        iso8601Formatter.formatOptions = [.withInternetDateTime]
+        if let date = iso8601Formatter.date(from: dateString) {
+            return date
+        }
+        
+        // Strategy 3: Try DateFormatter with multiple formats
+        let dateFormatter = DateFormatter()
+        dateFormatter.locale = Locale(identifier: "en_US_POSIX")
+        dateFormatter.timeZone = TimeZone(abbreviation: "UTC")
+        
+        let formats = [
+            "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
+            "yyyy-MM-dd'T'HH:mm:ss'Z'",
+            "yyyy-MM-dd'T'HH:mm:ss.SSSZ",
+            "yyyy-MM-dd'T'HH:mm:ssZ"
+        ]
+        
+        for format in formats {
+            dateFormatter.dateFormat = format
+            if let date = dateFormatter.date(from: dateString) {
+                return date
+            }
+        }
+        
+        // Strategy 4: Try parsing as Date directly (last resort)
+        if let date = ISO8601DateFormatter().date(from: dateString) {
+            return date
+        }
+        
+        return nil
+    }
 }
 
 #Preview {
