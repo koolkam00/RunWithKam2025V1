@@ -363,53 +363,59 @@ struct ScheduledRun: Identifiable, Codable {
     // Custom initializer for dictionary data (used by our custom decoder)
     init(from dictionary: [String: Any]) throws {
         guard let id = dictionary["id"] as? String else {
-            throw DecodingError.dataCorruptedError(
-                forKey: .id,
-                in: DecodingError.Context(codingPath: [], debugDescription: "Missing or invalid id"),
-                debugDescription: "Expected string id, got \(dictionary["id"] ?? "nil")"
+            throw DecodingError.dataCorrupted(
+                DecodingError.Context(
+                    codingPath: [],
+                    debugDescription: "Expected string id, got \(dictionary["id"] ?? "nil")"
+                )
             )
         }
         
         guard let time = dictionary["time"] as? String else {
-            throw DecodingError.dataCorruptedError(
-                forKey: .time,
-                in: DecodingError.Context(codingPath: [], debugDescription: "Missing or invalid time"),
-                debugDescription: "Expected string time, got \(dictionary["time"] ?? "nil")"
+            throw DecodingError.dataCorrupted(
+                DecodingError.Context(
+                    codingPath: [],
+                    debugDescription: "Expected string time, got \(dictionary["time"] ?? "nil")"
+                )
             )
         }
         
         guard let location = dictionary["location"] as? String else {
-            throw DecodingError.dataCorruptedError(
-                forKey: .location,
-                in: DecodingError.Context(codingPath: [], debugDescription: "Missing or invalid location"),
-                debugDescription: "Expected string location, got \(dictionary["location"] ?? "nil")"
+            throw DecodingError.dataCorrupted(
+                DecodingError.Context(
+                    codingPath: [],
+                    debugDescription: "Expected string location, got \(dictionary["location"] ?? "nil")"
+                )
             )
         }
         
         guard let pace = dictionary["pace"] as? String else {
-            throw DecodingError.dataCorruptedError(
-                forKey: .pace,
-                in: DecodingError.Context(codingPath: [], debugDescription: "Missing or invalid pace"),
-                debugDescription: "Expected string pace, got \(dictionary["pace"] ?? "nil")"
+            throw DecodingError.dataCorrupted(
+                DecodingError.Context(
+                    codingPath: [],
+                    debugDescription: "Expected string pace, got \(dictionary["pace"] ?? "nil")"
+                )
             )
         }
         
         let description = dictionary["description"] as? String ?? ""
         
         guard let dateString = dictionary["date"] as? String else {
-            throw DecodingError.dataCorruptedError(
-                forKey: .date,
-                in: DecodingError.Context(codingPath: [], debugDescription: "Missing or invalid date"),
-                debugDescription: "Expected string date, got \(dictionary["date"] ?? "nil")"
+            throw DecodingError.dataCorrupted(
+                DecodingError.Context(
+                    codingPath: [],
+                    debugDescription: "Could not parse date string: \(dictionary["date"] ?? "nil")"
+                )
             )
         }
         
         // Use our robust date parsing
         guard let parsedDate = parseDate(dateString) else {
-            throw DecodingError.dataCorruptedError(
-                forKey: .date,
-                in: DecodingError.Context(codingPath: [], debugDescription: "Unable to parse date"),
-                debugDescription: "Could not parse date string: \(dateString)"
+            throw DecodingError.dataCorrupted(
+                DecodingError.Context(
+                    codingPath: [],
+                    debugDescription: "Could not parse date string: \(dateString)"
+                )
             )
         }
         
