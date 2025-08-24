@@ -657,6 +657,28 @@ body {
     font-style: italic;
 }
 
+/* Date input styling */
+#runDate {
+    font-family: 'Courier New', monospace;
+    letter-spacing: 1px;
+}
+
+#runDate:valid {
+    border-color: #28a745;
+    background-color: #f8fff9;
+}
+
+#runDate:invalid {
+    border-color: #dc3545;
+    background-color: #fff8f8;
+}
+
+/* Time input styling */
+#runTime {
+    font-family: 'Courier New', monospace;
+    letter-spacing: 1px;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
     .update-notification {

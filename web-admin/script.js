@@ -56,6 +56,9 @@ function setupEventListeners() {
         document.getElementById('debugBtn').addEventListener('click', debugDateConversion);
     }
     
+    // Set today's date as placeholder for new runs
+    setTodayDatePlaceholder();
+    
     // Modal buttons
     document.getElementById('closeModal').addEventListener('click', hideRunModal);
     document.getElementById('cancelRun').addEventListener('click', hideRunModal);
@@ -239,12 +242,11 @@ function showAddRunModal() {
     modalTitle.textContent = 'Add New Run';
     runForm.reset();
     
-    // Set default date to selected date
-    const dateInput = document.getElementById('runDate');
-    const timeInput = document.getElementById('runTime');
+    // Set today's date for new runs
+    setTodayDatePlaceholder();
     
-    dateInput.value = selectedDate.toISOString().split('T')[0];
-    timeInput.value = '08:00';
+    // Set default time
+    document.getElementById('runTime').value = '08:00';
     
     runModal.classList.remove('hidden');
 }
@@ -259,9 +261,8 @@ function showEditRunModal(runId) {
     // Populate form with run data
     const runDate = new Date(run.date);
     
-    // Ensure we get the local date (not UTC) for the form
-    const localDate = new Date(runDate.getTime() - (runDate.getTimezoneOffset() * 60000));
-    const dateString = localDate.toISOString().split('T')[0];
+    // Extract just the date part (YYYY-MM-DD) from the UTC date
+    const dateString = runDate.toISOString().split('T')[0];
     
     document.getElementById('runDate').value = dateString;
     document.getElementById('runTime').value = run.time;
@@ -272,7 +273,6 @@ function showEditRunModal(runId) {
     console.log('📅 Edit modal populated:', {
         originalDate: run.date,
         runDate: runDate.toISOString(),
-        localDate: localDate.toISOString(),
         formDate: dateString,
         time: run.time
     });
@@ -302,16 +302,32 @@ async function handleRunSubmit(event) {
         return;
     }
     
-    // Create date in local timezone first
-    const localDateTime = new Date(`${dateString}T${timeString}:00`);
+    // Validate date format (YYYY-MM-DD)
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(dateString)) {
+        showNotification('Please enter date in YYYY-MM-DD format (e.g., 2025-08-25)', 'error');
+        return;
+    }
     
-    // Convert to UTC midnight for maximum iOS compatibility
-    const utcDate = new Date(Date.UTC(
-        localDateTime.getFullYear(),
-        localDateTime.getMonth(),
-        localDateTime.getDate(),
-        0, 0, 0, 0
-    ));
+    // Validate time format (HH:MM)
+    const timeRegex = /^\d{2}:\d{2}$/;
+    if (!timeRegex.test(timeString)) {
+        showNotification('Please enter time in HH:MM format (e.g., 06:00)', 'error');
+        return;
+    }
+    
+    // Parse date components directly (no timezone issues)
+    const [year, month, day] = dateString.split('-').map(Number);
+    const [hours, minutes] = timeString.split(':').map(Number);
+    
+    // Validate date components
+    if (month < 1 || month > 12 || day < 1 || day > 31 || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+        showNotification('Please enter valid date and time values', 'error');
+        return;
+    }
+    
+    // Create UTC date directly (no timezone conversion needed)
+    const utcDate = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
     
     // Format data consistently
     const runData = {
@@ -571,6 +587,25 @@ window.addEventListener('resize', function() {
         renderCalendar();
     }
 });
+
+// Set today's date as placeholder
+function setTodayDatePlaceholder() {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const todayString = `${year}-${month}-${day}`;
+    
+    // Set as placeholder and default value for new runs
+    const dateInput = document.getElementById('runDate');
+    if (dateInput) {
+        dateInput.placeholder = todayString;
+        // Only set default value if it's a new run (not editing)
+        if (!editingRunId) {
+            dateInput.value = todayString;
+        }
+    }
+}
 
 // Debug function to test date conversion
 function debugDateConversion() {
