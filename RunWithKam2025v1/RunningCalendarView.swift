@@ -27,6 +27,38 @@ struct RunningCalendarView: View {
                 }
                 .padding(.top, 20)
                 
+                // Test Notification Button (for debugging)
+                HStack(spacing: 12) {
+                    Button(action: {
+                        apiService.testNotification()
+                    }) {
+                        HStack {
+                            Image(systemName: "bell.badge")
+                            Text("Test Notification")
+                        }
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(Color.orange)
+                        .cornerRadius(8)
+                    }
+                    
+                    Button(action: {
+                        checkForNewRuns()
+                    }) {
+                        HStack {
+                            Image(systemName: "arrow.clockwise")
+                            Text("Check for New Runs")
+                        }
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(Color.green)
+                        .cornerRadius(8)
+                    }
+                }
+                .padding(.bottom, 10)
+                
                 // Calendar View
                 VStack(spacing: 15) {
                     // Month/Year Header
@@ -468,6 +500,23 @@ struct ScheduledRun: Identifiable, Codable {
         }
         
         return nil
+    }
+}
+
+// MARK: - Notification Handling
+extension RunningCalendarView {
+    func checkForNewRuns() {
+        Task {
+            do {
+                let newRuns = try await apiService.fetchRuns()
+                print("🔔 iOS App: Checked for new runs, found \(newRuns.count)")
+                
+                // The APIService will automatically show notifications for new runs
+                // This method is for manual checking
+            } catch {
+                print("❌ iOS App: Failed to check for new runs: \(error)")
+            }
+        }
     }
 }
 

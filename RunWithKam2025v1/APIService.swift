@@ -1,4 +1,5 @@
 import Foundation
+import UserNotifications
 
 // MARK: - API Response Models
 struct APIResponse<T: Codable>: Codable {
@@ -16,7 +17,10 @@ class APIService: ObservableObject {
     @Published var isLoading = false
     @Published var errorMessage: String?
     
-    private init() {}
+    private init() {
+        // Request notification permissions when service is initialized
+        requestNotificationPermissions()
+    }
     
     // MARK: - Fetch all runs
     func fetchRuns() async throws -> [ScheduledRun] {
@@ -195,6 +199,10 @@ class APIService: ObservableObject {
     private func checkForUpdates() async {
         do {
             let newRuns = try await fetchRuns()
+            
+            // Check for new runs and show notifications
+            await checkForNewRunsAndNotify(newRuns)
+            
             // Notify observers of new data
             DispatchQueue.main.async {
                 NotificationCenter.default.post(
@@ -204,6 +212,121 @@ class APIService: ObservableObject {
             }
         } catch {
             print("Failed to check for updates: \(error)")
+        }
+    }
+    
+    // MARK: - Notification Methods
+    private func requestNotificationPermissions() {
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
+            if granted {
+                print("🔔 iOS App: Notification permissions granted")
+            } else if let error = error {
+                print("❌ iOS App: Notification permission error: \(error)")
+            } else {
+                print("🔔 iOS App: Notification permissions denied")
+            }
+        }
+    }
+    
+    private func checkForNewRunsAndNotify(_ newRuns: [ScheduledRun]) async {
+        // Get the last known run count from UserDefaults
+        let lastRunCount = UserDefaults.standard.integer(forKey: "lastRunCount")
+        let currentRunCount = newRuns.count
+        
+        // If we have more runs than before, some are new
+        if currentRunCount > lastRunCount {
+            let newRunsCount = currentRunCount - lastRunCount
+            
+            // Show notification for new runs
+            if newRunsCount == 1 {
+                if let newRun = newRuns.last {
+                    showNewRunNotification(for: newRun)
+                }
+            } else {
+                showMultipleRunsNotification(count: newRunsCount)
+            }
+            
+            // Update the stored count
+            UserDefaults.standard.set(currentRunCount, forKey: "lastRunCount")
+        }
+    }
+    
+    private func showNewRunNotification(for run: ScheduledRun) {
+        let content = UNMutableNotificationContent()
+        content.title = "New Run Scheduled! 🏃‍♂️"
+        content.body = "Join Kam at \(run.location) on \(formatDate(run.date)) at \(run.time)"
+        content.sound = .default
+        
+        // Add run details to notification
+        content.userInfo = [
+            "runId": run.id,
+            "location": run.location,
+            "date": run.date.timeIntervalSince1970,
+            "time": run.time
+        ]
+        
+        let request = UNNotificationRequest(
+            identifier: "new-run-\(run.id)",
+            content: content,
+            trigger: nil
+        )
+        
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error = error {
+                print("❌ iOS App: Failed to show notification: \(error)")
+            } else {
+                print("🔔 iOS App: New run notification shown for \(run.location)")
+            }
+        }
+    }
+    
+    private func showMultipleRunsNotification(count: Int) {
+        let content = UNMutableNotificationContent()
+        content.title = "New Runs Added! 🏃‍♂️"
+        content.body = "\(count) new runs have been scheduled. Check the calendar!"
+        content.sound = .default
+        
+        let request = UNNotificationRequest(
+            identifier: "multiple-runs-\(Date().timeIntervalSince1970)",
+            content: content,
+            trigger: nil
+        )
+        
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error = error {
+                print("❌ iOS App: Failed to show multiple runs notification: \(error)")
+            } else {
+                print("🔔 iOS App: Multiple runs notification shown for \(count) runs")
+            }
+        }
+    }
+    
+    private func formatDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        return formatter.string(from: date)
+    }
+    
+    // MARK: - Test Notification (for debugging)
+    func testNotification() {
+        let content = UNMutableNotificationContent()
+        content.title = "Test Notification! 🧪"
+        content.body = "This is a test notification from RunWithKam"
+        content.sound = .default
+        
+        let request = UNNotificationRequest(
+            identifier: "test-notification-\(Date().timeIntervalSince1970)",
+            content: content,
+            trigger: nil
+        )
+        
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error = error {
+                print("❌ iOS App: Failed to show test notification: \(error)")
+            } else {
+                print("🔔 iOS App: Test notification shown successfully")
+            }
         }
     }
 }
