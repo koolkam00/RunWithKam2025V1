@@ -31,7 +31,83 @@ function createFormattedDate(daysFromNow) {
 }
 
 // In-memory data storage (replace with database in production)
-let runs = [
+let runs = [];
+
+// In-memory notification storage (replace with database in production)
+let notifications = [];
+
+// Helper function to send notifications to all users
+function sendRunNotification(run) {
+    const notification = {
+        id: uuidv4(),
+        type: 'new_run',
+        title: 'New Run Scheduled! 🏃‍♂️',
+        message: `Join Kam for a run at ${run.location} on ${new Date(run.date).toLocaleDateString('en-US', { 
+            weekday: 'long', 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+        })} at ${run.time}`,
+        details: {
+            runId: run.id,
+            date: run.date,
+            time: run.time,
+            location: run.location,
+            pace: run.pace,
+            description: run.description
+        },
+        timestamp: new Date().toISOString(),
+        read: false
+    };
+    
+    notifications.push(notification);
+    
+    // Log the notification
+    console.log(`🔔 Notification sent: ${notification.title}`);
+    console.log(`   Message: ${notification.message}`);
+    
+    // In a real app, you would send push notifications here
+    // For now, we'll store them and clients can poll for updates
+    
+    return notification;
+}
+
+// Initialize with sample data
+function initializeSampleData() {
+    runs = [
+        {
+            id: uuidv4(),
+            date: createFormattedDate(1), // Tomorrow
+            time: '06:00',
+            location: 'Central Park',
+            pace: '8:30/mile',
+            description: 'Morning run around the reservoir'
+        },
+        {
+            id: uuidv4(),
+            date: createFormattedDate(3), // 3 days from now
+            time: '17:30',
+            location: 'Brooklyn Bridge',
+            pace: '9:00/mile',
+            description: 'Sunset run across the bridge'
+        },
+        {
+            id: uuidv4(),
+            date: createFormattedDate(7), // 7 days from now
+            time: '07:00',
+            location: 'Prospect Park',
+            pace: '7:30/mile',
+            description: 'Speed workout on the loop'
+        }
+    ];
+    
+    // Send notifications for sample data
+    runs.forEach(run => {
+        sendRunNotification(run);
+    });
+    
+    console.log('📊 Sample data initialized with notifications');
+}
     {
         id: uuidv4(),
         date: createFormattedDate(1), // Tomorrow
@@ -246,11 +322,16 @@ app.post('/api/runs', (req, res) => {
         // Add to runs array
         runs.push(newRun);
         
+        // Send notification to all users about the new run
+        const notification = sendRunNotification(newRun);
+        
         console.log(`✅ Created new run with ID: ${newRun.id}`);
+        console.log(`🔔 Notification sent: ${notification.id}`);
         
         res.status(201).json({
             success: true,
             data: newRun,
+            notification: notification,
             count: 1,
             message: 'Run created successfully'
         });
@@ -372,6 +453,68 @@ app.get('/api/health', (req, res) => {
     });
 });
 
+// GET /api/notifications - Get all notifications
+app.get('/api/notifications', (req, res) => {
+    try {
+        // Sort notifications by timestamp (newest first)
+        const sortedNotifications = [...notifications].sort((a, b) => 
+            new Date(b.timestamp) - new Date(a.timestamp)
+        );
+        
+        res.json({
+            success: true,
+            data: sortedNotifications,
+            count: sortedNotifications.length,
+            message: 'Notifications retrieved successfully',
+            timestamp: new Date().toISOString(),
+            version: '1.0.0'
+        });
+    } catch (error) {
+        console.error('❌ Error getting notifications:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message,
+            timestamp: new Date().toISOString(),
+            version: '1.0.0'
+        });
+    }
+});
+
+// PUT /api/notifications/:id/read - Mark notification as read
+app.put('/api/notifications/:id/read', (req, res) => {
+    try {
+        const notificationId = req.params.id;
+        const notification = notifications.find(n => n.id === notificationId);
+        
+        if (!notification) {
+            return res.status(404).json({
+                success: false,
+                error: 'Notification not found',
+                timestamp: new Date().toISOString(),
+                version: '1.0.0'
+        });
+        }
+        
+        notification.read = true;
+        
+        res.json({
+            success: true,
+            data: notification,
+            message: 'Notification marked as read',
+            timestamp: new Date().toISOString(),
+            version: '1.0.0'
+        });
+    } catch (error) {
+        console.error('❌ Error marking notification as read:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message,
+            timestamp: new Date().toISOString(),
+            version: '1.0.0'
+        });
+    }
+});
+
 // Root endpoint
 app.get('/', (req, res) => {
     res.json({
@@ -379,10 +522,11 @@ app.get('/', (req, res) => {
         data: {
             name: 'Run With Kam API',
             version: '1.0.0',
-            endpoints: {
-                runs: '/api/runs',
-                health: '/api/health'
-            }
+                    endpoints: {
+            runs: '/api/runs',
+            notifications: '/api/notifications',
+            health: '/api/health'
+        }
         },
         count: 1,
         message: 'Welcome to Run With Kam API'
@@ -466,19 +610,26 @@ app.listen(PORT, () => {
     // Clean up any invalid IDs first
     cleanupInvalidIDs();
     
-    // Regenerate sample data with proper dates
-    regenerateSampleData();
+    // Initialize sample data with notifications
+    initializeSampleData();
     
     console.log(`🚀 Run With Kam API server running on port ${PORT}`);
     console.log(`📱 iOS app can connect to: http://localhost:${PORT}/api`);
     console.log(`🌐 Web admin can connect to: http://localhost:${PORT}/api`);
     console.log(`🔍 Health check: http://localhost:${PORT}/api/health`);
     console.log(`📊 Total runs loaded: ${runs.length}`);
+    console.log(`🔔 Total notifications created: ${notifications.length}`);
     
     // Log all run IDs and dates for verification
     runs.forEach((run, index) => {
         console.log(`  Run ${index + 1}: ID=${run.id} (${isValidUUID(run.id) ? '✅ Valid' : '❌ Invalid'})`);
         console.log(`    Date: ${run.date} (${new Date(run.date).toISOString() === run.date ? '✅ Valid ISO' : '❌ Invalid ISO'})`);
+    });
+    
+    // Log notifications
+    notifications.forEach((notification, index) => {
+        console.log(`  Notification ${index + 1}: ${notification.title}`);
+        console.log(`    Message: ${notification.message}`);
     });
 });
 

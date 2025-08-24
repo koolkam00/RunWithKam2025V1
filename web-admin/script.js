@@ -10,6 +10,7 @@
 let currentDate = new Date();
 let selectedDate = new Date();
 let runs = [];
+let notifications = [];
 let editingRunId = null;
 
 // DOM elements
@@ -158,10 +159,11 @@ function showDashboard() {
     loginScreen.classList.remove("active");
     dashboardScreen.classList.add("active");
     
+    // Load notifications
+    loadNotificationsFromAPI();
+    
     // Start real-time updates
     initializeRealTimeUpdates();
-    loginScreen.classList.remove('active');
-    dashboardScreen.classList.add('active');
 }
 
 // Calendar functions
@@ -572,6 +574,70 @@ function loadSampleData() {
             }
         ];
         saveRuns();
+    }
+}
+
+// Load notifications from API
+async function loadNotificationsFromAPI() {
+    try {
+        const response = await fetch('http://localhost:3000/api/notifications');
+        if (response.ok) {
+            const result = await response.json();
+            notifications = result.data || [];
+            console.log(`🔔 Loaded ${notifications.length} notifications from API`);
+            renderNotifications();
+        } else {
+            console.error('❌ Failed to load notifications from API');
+        }
+    } catch (error) {
+        console.error('❌ Error loading notifications from API:', error);
+    }
+}
+
+// Render notifications in the UI
+function renderNotifications() {
+    const notificationsContainer = document.getElementById('notificationsContainer');
+    if (!notificationsContainer) return;
+    
+    if (notifications.length === 0) {
+        notificationsContainer.innerHTML = '<p class="text-gray-500">No notifications yet</p>';
+        return;
+    }
+    
+    const notificationsHTML = notifications.map(notification => `
+        <div class="notification-item ${notification.read ? 'read' : 'unread'}" data-id="${notification.id}">
+            <div class="notification-header">
+                <h4 class="notification-title">${notification.title}</h4>
+                <span class="notification-time">${new Date(notification.timestamp).toLocaleString()}</span>
+            </div>
+            <p class="notification-message">${notification.message}</p>
+            <div class="notification-actions">
+                <button class="btn btn-sm btn-secondary" onclick="markNotificationRead('${notification.id}')">
+                    ${notification.read ? 'Read' : 'Mark as Read'}
+                </button>
+            </div>
+        </div>
+    `).join('');
+    
+    notificationsContainer.innerHTML = notificationsHTML;
+}
+
+// Mark notification as read
+async function markNotificationRead(notificationId) {
+    try {
+        const response = await fetch(`http://localhost:3000/api/notifications/${notificationId}/read`, {
+            method: 'PUT'
+        });
+        
+        if (response.ok) {
+            const notification = notifications.find(n => n.id === notificationId);
+            if (notification) {
+                notification.read = true;
+                renderNotifications();
+            }
+        }
+    } catch (error) {
+        console.error('❌ Error marking notification as read:', error);
     }
 }
 
