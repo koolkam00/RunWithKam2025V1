@@ -78,25 +78,19 @@ function validateAndNormalizeRunData(runData) {
         }
     }
     
-    // Normalize and validate date
+    // Validate date format (no normalization needed - preserve exact date sent)
     let normalizedDate;
     try {
-        // Try to parse the date
+        // Validate the date format without changing it
         const parsedDate = new Date(runData.date);
         if (isNaN(parsedDate.getTime())) {
             throw new Error('Invalid date format');
         }
         
-        // Ensure date is set to start of day for consistency and proper ISO format
-        const year = parsedDate.getFullYear();
-        const month = parsedDate.getMonth();
-        const day = parsedDate.getDate();
+        // Keep the exact date as sent - no normalization that could shift dates
+        normalizedDate = runData.date;
         
-        // Create a new date at midnight UTC for maximum compatibility
-        const normalizedDateObj = new Date(Date.UTC(year, month, day, 0, 0, 0, 0));
-        normalizedDate = normalizedDateObj.toISOString();
-        
-        console.log(`📅 Date normalized: ${runData.date} -> ${normalizedDate}`);
+        console.log(`📅 Date validated (preserved): ${runData.date} -> ${normalizedDate}`);
     } catch (error) {
         throw new Error('Invalid date format. Please use ISO 8601 format (YYYY-MM-DDTHH:mm:ss.sssZ)');
     }
