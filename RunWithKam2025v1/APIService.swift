@@ -1,5 +1,6 @@
 import Foundation
 import UserNotifications
+import UIKit
 
 // MARK: - API Response Models
 struct APIResponse<T: Codable>: Codable {
