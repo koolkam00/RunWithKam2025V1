@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Date Format Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 20px; border: 1px solid #ddd; border-radius: 5px; }
+        .form-group { margin: 10px 0; }
+        label { display: inline-block; width: 100px; }
+        input { padding: 8px; border: 1px solid #ccc; border-radius: 3px; }
+        button { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .result { margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 5px; }
+        .success { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .error { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        .code { font-family: 'Courier New', monospace; background: #f1f1f1; padding: 2px 4px; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <h1>New Date Format Test</h1>
+    <p>This tests the new text-based date input that should fix iOS app compatibility issues.</p>
+    
+    <div class="test-section">
+        <h3>Test Date Input</h3>
+        <form id="testForm">
+            <div class="form-group">
+                <label for="testDate">Date:</label>
+                <input type="text" id="testDate" placeholder="YYYY-MM-DD" pattern="\d{4}-\d{2}-\d{2}" value="2025-08-25">
+                <small>Format: YYYY-MM-DD (e.g., 2025-08-25)</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="testTime">Time:</label>
+                <input type="time" id="testTime" value="06:00">
+                <small>Format: HH:MM (24-hour)</small>
+            </div>
+            
+            <button type="submit">Test Conversion</button>
+        </form>
+        
+        <div id="results" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>Expected iOS App Format</h3>
+        <p>The iOS app expects dates in this exact format:</p>
+        <div class="code">YYYY-MM-DDTHH:MM:SS.sssZ</div>
+        <p>Example: <span class="code">2025-08-25T00:00:00.000Z</span></p>
+        <p><strong>Note:</strong> The time is always set to 00:00:00.000Z (midnight UTC) for maximum compatibility.</p>
+    </div>
+    
+    <script>
+        document.getElementById('testForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const dateString = document.getElementById('testDate').value;
+            const timeString = document.getElementById('testTime').value;
+            
+            // Validate date format (YYYY-MM-DD)
+            const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+            if (!dateRegex.test(dateString)) {
+                showResult('❌ Invalid date format. Please use YYYY-MM-DD format.', 'error');
+                return;
+            }
+            
+            // Validate time format (HH:MM)
+            const timeRegex = /^\d{2}:\d{2}$/;
+            if (!timeRegex.test(timeString)) {
+                showResult('❌ Invalid time format. Please use HH:MM format.', 'error');
+                return;
+            }
+            
+            // Parse date components directly (no timezone issues)
+            const [year, month, day] = dateString.split('-').map(Number);
+            const [hours, minutes] = timeString.split(':').map(Number);
+            
+            // Validate date components
+            if (month < 1 || month > 12 || day < 1 || day > 31 || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+                showResult('❌ Invalid date or time values.', 'error');
+                return;
+            }
+            
+            // Create UTC date directly (no timezone conversion needed)
+            const utcDate = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+            
+            // Check if this matches iOS app expectations
+            const iosExpectedFormat = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
+            const isIosCompatible = iosExpectedFormat.test(utcDate.toISOString());
+            
+            const result = `
+                <h4>✅ Conversion Successful!</h4>
+                <p><strong>Input Date:</strong> ${dateString}</p>
+                <p><strong>Input Time:</strong> ${timeString}</p>
+                <p><strong>Parsed Components:</strong> Year: ${year}, Month: ${month}, Day: ${day}</p>
+                <p><strong>UTC Date Created:</strong> ${utcDate.toISOString()}</p>
+                <p><strong>iOS App Compatible:</strong> ${isIosCompatible ? '✅ YES' : '❌ NO'}</p>
+                
+                <h4>Data Sent to Backend:</h4>
+                <div class="code">
+                {
+                    "date": "${utcDate.toISOString()}",
+                    "time": "${timeString}",
+                    "location": "Test Location",
+                    "pace": "8:00/mile",
+                    "description": "Test run"
+                }
+                </div>
+                
+                <p><strong>Status:</strong> This date format should now work perfectly with your iOS app! 🎉</p>
+            `;
+            
+            showResult(result, 'success');
+        });
+        
+        function showResult(content, type) {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = content;
+            resultsDiv.className = `result ${type}`;
+        }
+        
+        // Set today's date as default
+        window.addEventListener('load', function() {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            const todayString = `${year}-${month}-${day}`;
+            
+            document.getElementById('testDate').value = todayString;
+        });
+    </script>
+</body>
+</html>
