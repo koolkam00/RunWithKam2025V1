@@ -233,7 +233,13 @@ class APIService: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
                 print("🔔 iOS App: Notification permissions granted")
                 // Clear any existing badges
                 DispatchQueue.main.async {
-                    UIApplication.shared.applicationIconBadgeNumber = 0
+                    UNUserNotificationCenter.current().setBadgeCount(0) { error in
+                        if let error = error {
+                            print("❌ iOS App: Failed to clear badge: \(error)")
+                        } else {
+                            print("🔔 iOS App: Badge cleared successfully")
+                        }
+                    }
                 }
             } else if let error = error {
                 print("❌ iOS App: Notification permission error: \(error)")
@@ -294,7 +300,13 @@ class APIService: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
                 print("🔔 iOS App: New run notification shown for \(run.location)")
                 // Clear badge after showing notification
                 DispatchQueue.main.async {
-                    UIApplication.shared.applicationIconBadgeNumber = 0
+                    UNUserNotificationCenter.current().setBadgeCount(0) { error in
+                        if let error = error {
+                            print("❌ iOS App: Failed to clear badge: \(error)")
+                        } else {
+                            print("🔔 iOS App: Badge cleared successfully")
+                        }
+                    }
                 }
             }
         }
@@ -328,7 +340,13 @@ class APIService: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
                 print("🔔 iOS App: Multiple runs notification shown for \(count) runs")
                 // Clear badge after showing notification
                 DispatchQueue.main.async {
-                    UIApplication.shared.applicationIconBadgeNumber = 0
+                    UNUserNotificationCenter.current().setBadgeCount(0) { error in
+                        if let error = error {
+                            print("❌ iOS App: Failed to clear badge: \(error)")
+                        } else {
+                            print("🔔 iOS App: Badge cleared successfully")
+                        }
+                    }
                 }
             }
         }
@@ -370,7 +388,13 @@ class APIService: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
                 print("🔔 iOS App: Test notification shown successfully")
                 // Clear badge after showing notification
                 DispatchQueue.main.async {
-                    UIApplication.shared.applicationIconBadgeNumber = 0
+                    UNUserNotificationCenter.current().setBadgeCount(0) { error in
+                        if let error = error {
+                            print("❌ iOS App: Failed to clear badge: \(error)")
+                        } else {
+                            print("🔔 iOS App: Badge cleared successfully")
+                        }
+                    }
                 }
             }
         }
@@ -398,8 +422,13 @@ class APIService: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
     
     @objc private func appDidBecomeActive() {
         // Clear badge when app becomes active
-        UIApplication.shared.applicationIconBadgeNumber = 0
-        print("🔔 iOS App: App became active, cleared badge")
+        UNUserNotificationCenter.current().setBadgeCount(0) { error in
+            if let error = error {
+                print("❌ iOS App: Failed to clear badge: \(error)")
+            } else {
+                print("🔔 iOS App: App became active, badge cleared successfully")
+            }
+        }
     }
 }
 
