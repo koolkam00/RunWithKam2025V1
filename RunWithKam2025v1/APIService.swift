@@ -145,7 +145,6 @@ class APIService: ObservableObject {
         guard let json = json,
               let success = json["success"] as? Bool,
               let dataArray = json["data"] as? [[String: Any]],
-              let count = json["count"] as? Int,
               let message = json["message"] as? String else {
             throw APIError.serverError
         }
