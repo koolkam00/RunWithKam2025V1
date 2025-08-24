@@ -10,7 +10,7 @@ struct APIResponse<T: Codable>: Codable {
 }
 
 // MARK: - API Service for RunWithKam
-class APIService: ObservableObject {
+class APIService: ObservableObject, UNUserNotificationCenterDelegate {
     static let shared = APIService()
     private let baseURL = "http://localhost:3000/api"
     
@@ -20,6 +20,7 @@ class APIService: ObservableObject {
     private init() {
         // Request notification permissions when service is initialized
         requestNotificationPermissions()
+        UNUserNotificationCenter.current().delegate = self
     }
     
     // MARK: - Fetch all runs
@@ -254,8 +255,9 @@ class APIService: ObservableObject {
     private func showNewRunNotification(for run: ScheduledRun) {
         let content = UNMutableNotificationContent()
         content.title = "New Run Scheduled! 🏃‍♂️"
-        content.body = "Join Kam at \(run.location) on \(formatDate(run.date)) at \(run.time)"
+        content.body = "Run with Kam at \(run.location) on \(formatDate(run.date)) at \(run.time)"
         content.sound = .default
+        content.badge = 1 // Add badge support
         
         // Add run details to notification
         content.userInfo = [
@@ -278,6 +280,14 @@ class APIService: ObservableObject {
                 print("🔔 iOS App: New run notification shown for \(run.location)")
             }
         }
+        
+        // Also show in-app alert for foreground notifications
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(
+                name: .showInAppNotification,
+                object: run
+            )
+        }
     }
     
     private func showMultipleRunsNotification(count: Int) {
@@ -285,6 +295,7 @@ class APIService: ObservableObject {
         content.title = "New Runs Added! 🏃‍♂️"
         content.body = "\(count) new runs have been scheduled. Check the calendar!"
         content.sound = .default
+        content.badge = count
         
         let request = UNNotificationRequest(
             identifier: "multiple-runs-\(Date().timeIntervalSince1970)",
@@ -298,6 +309,14 @@ class APIService: ObservableObject {
             } else {
                 print("🔔 iOS App: Multiple runs notification shown for \(count) runs")
             }
+        }
+        
+        // Also show in-app alert
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(
+                name: .showInAppNotification,
+                object: nil
+            )
         }
     }
     
@@ -314,6 +333,7 @@ class APIService: ObservableObject {
         content.title = "Test Notification! 🧪"
         content.body = "This is a test notification from RunWithKam"
         content.sound = .default
+        content.badge = 1
         
         let request = UNNotificationRequest(
             identifier: "test-notification-\(Date().timeIntervalSince1970)",
@@ -328,6 +348,26 @@ class APIService: ObservableObject {
                 print("🔔 iOS App: Test notification shown successfully")
             }
         }
+        
+        // Also show in-app alert
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(
+                name: .showInAppNotification,
+                object: nil
+            )
+        }
+    }
+    
+    // MARK: - UNUserNotificationCenterDelegate
+    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        // Show notification even when app is in foreground
+        completionHandler([.banner, .sound, .badge])
+    }
+    
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+        // Handle notification tap
+        print("🔔 iOS App: User tapped notification: \(response.notification.request.identifier)")
+        completionHandler()
     }
 }
 
@@ -355,4 +395,5 @@ enum APIError: Error, LocalizedError {
 // MARK: - Notification Names
 extension Notification.Name {
     static let runsUpdated = Notification.Name("runsUpdated")
+    static let showInAppNotification = Notification.Name("showInAppNotification")
 }

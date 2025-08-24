@@ -10,6 +10,8 @@ struct RunningCalendarView: View {
     @StateObject private var apiService = APIService.shared
     @State private var isLoading = false
     @State private var errorMessage: String?
+    @State private var showingInAppNotification = false
+    @State private var notificationMessage = ""
     
     var body: some View {
         NavigationView {
@@ -58,6 +60,23 @@ struct RunningCalendarView: View {
                     }
                 }
                 .padding(.bottom, 10)
+                
+                // In-app notification alert
+                if showingInAppNotification {
+                    HStack {
+                        Image(systemName: "bell.fill")
+                            .foregroundColor(.orange)
+                        Text(notificationMessage)
+                            .foregroundColor(.primary)
+                        Spacer()
+                    }
+                    .padding()
+                    .background(Color.orange.opacity(0.1))
+                    .cornerRadius(8)
+                    .padding(.horizontal)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .animation(.easeInOut(duration: 0.3), value: showingInAppNotification)
+                }
                 
                 // Calendar View
                 VStack(spacing: 15) {
@@ -174,6 +193,9 @@ struct RunningCalendarView: View {
                 loadRunsFromAPI()
                 // Start real-time updates
                 apiService.startRealTimeUpdates()
+                
+                // Setup notification handling
+                setupNotificationHandling()
                 
                 // Listen for real-time updates
                 NotificationCenter.default.addObserver(
@@ -500,6 +522,35 @@ struct ScheduledRun: Identifiable, Codable {
         }
         
         return nil
+    }
+    
+    // MARK: - Notification Handling
+    private func setupNotificationHandling() {
+        // Listen for in-app notifications
+        NotificationCenter.default.addObserver(
+            forName: .showInAppNotification,
+            object: nil,
+            queue: .main
+        ) { notification in
+            if let run = notification.object as? ScheduledRun {
+                self.notificationMessage = "New run: \(run.location) on \(formatDate(run.date)) at \(run.time)"
+            } else {
+                self.notificationMessage = "Notification received!"
+            }
+            self.showingInAppNotification = true
+            
+            // Auto-hide after 3 seconds
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                self.showingInAppNotification = false
+            }
+        }
+    }
+    
+    private func formatDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        return formatter.string(from: date)
     }
 }
 
