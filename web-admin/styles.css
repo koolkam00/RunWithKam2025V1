@@ -648,6 +648,15 @@ body {
     transform: translateY(0);
 }
 
+/* Form help text styling */
+.form-help {
+    display: block;
+    margin-top: 4px;
+    font-size: 12px;
+    color: #6c757d;
+    font-style: italic;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
     .update-notification {

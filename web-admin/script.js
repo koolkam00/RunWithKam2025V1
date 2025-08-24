@@ -278,16 +278,23 @@ async function handleRunSubmit(event) {
     const dateString = formData.get('runDate');
     const timeString = formData.get('runTime');
     
+    // Validate required fields
+    if (!dateString || !timeString || !formData.get('runLocation') || !formData.get('runPace')) {
+        showNotification('Please fill in all required fields', 'error');
+        return;
+    }
+    
     // Combine date and time into proper ISO 8601 datetime string
     const combinedDateTime = new Date(`${dateString}T${timeString}:00`);
     const isoDateTime = combinedDateTime.toISOString();
     
+    // Format data consistently
     const runData = {
         date: isoDateTime,
-        time: formData.get('runTime'),
-        location: formData.get('runLocation'),
+        time: timeString, // Keep original time format for display
+        location: formData.get('runLocation').trim(),
         pace: formData.get('runPace'),
-        description: formData.get('runDescription')
+        description: (formData.get('runDescription') || '').trim()
     };
     
     if (editingRunId) {
@@ -319,7 +326,20 @@ async function handleRunSubmit(event) {
         }
     } catch (error) {
         console.error('Failed to sync with API:', error);
-        showNotification('Saved locally, but failed to sync with server', 'warning');
+        let errorMessage = 'Saved locally, but failed to sync with server';
+        
+        // Provide more specific error messages
+        if (error.message.includes('Invalid date format')) {
+            errorMessage = 'Invalid date format. Please select a valid date.';
+        } else if (error.message.includes('Invalid time format')) {
+            errorMessage = 'Invalid time format. Please use HH:MM format.';
+        } else if (error.message.includes('Invalid pace format')) {
+            errorMessage = 'Invalid pace format. Please select from the dropdown.';
+        } else if (error.message.includes('Missing required field')) {
+            errorMessage = 'Please fill in all required fields.';
+        }
+        
+        showNotification(errorMessage, 'error');
     }
     
     // Update UI
@@ -428,12 +448,28 @@ function showNotification(message, type = 'info') {
     notification.className = `notification notification-${type}`;
     notification.textContent = message;
     
+    // Set background color based on type
+    let backgroundColor;
+    switch (type) {
+        case 'success':
+            backgroundColor = '#28a745';
+            break;
+        case 'error':
+            backgroundColor = '#dc3545';
+            break;
+        case 'warning':
+            backgroundColor = '#ffc107';
+            break;
+        default:
+            backgroundColor = '#17a2b8';
+    }
+    
     // Add styles
     notification.style.cssText = `
         position: fixed;
         top: 20px;
         right: 20px;
-        background: ${type === 'success' ? '#28a745' : '#17a2b8'};
+        background: ${backgroundColor};
         color: white;
         padding: 15px 20px;
         border-radius: 8px;

@@ -46,8 +46,8 @@ function findRunById(id) {
     return runs.find(run => run.id === id);
 }
 
-// Helper function to validate run data
-function validateRunData(runData) {
+// Helper function to validate and normalize run data
+function validateAndNormalizeRunData(runData) {
     const required = ['date', 'time', 'location', 'pace'];
     for (const field of required) {
         if (!runData[field]) {
@@ -55,18 +55,76 @@ function validateRunData(runData) {
         }
     }
     
-    // Validate date format
-    if (isNaN(Date.parse(runData.date))) {
-        throw new Error('Invalid date format');
+    // Normalize and validate date
+    let normalizedDate;
+    try {
+        // Try to parse the date
+        const parsedDate = new Date(runData.date);
+        if (isNaN(parsedDate.getTime())) {
+            throw new Error('Invalid date format');
+        }
+        
+        // Ensure date is set to start of day for consistency
+        normalizedDate = new Date(parsedDate.getFullYear(), parsedDate.getMonth(), parsedDate.getDate());
+        normalizedDate = normalizedDate.toISOString();
+    } catch (error) {
+        throw new Error('Invalid date format. Please use ISO 8601 format (YYYY-MM-DDTHH:mm:ss.sssZ)');
     }
     
-    // Validate time format (HH:MM)
-    const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
-    if (!timeRegex.test(runData.time)) {
-        throw new Error('Invalid time format. Use HH:MM format');
+    // Normalize and validate time
+    let normalizedTime;
+    if (typeof runData.time === 'string') {
+        // Handle various time formats
+        const timeStr = runData.time.trim();
+        
+        // Check if it's already in HH:MM format
+        const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+        if (timeRegex.test(timeStr)) {
+            normalizedTime = timeStr;
+        } else {
+            // Try to parse other time formats
+            const timeMatch = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM|am|pm)?/);
+            if (timeMatch) {
+                let hours = parseInt(timeMatch[1]);
+                const minutes = timeMatch[2];
+                const period = timeMatch[3] ? timeMatch[3].toUpperCase() : null;
+                
+                if (period === 'PM' && hours !== 12) {
+                    hours += 12;
+                } else if (period === 'AM' && hours === 12) {
+                    hours = 0;
+                }
+                
+                normalizedTime = `${hours.toString().padStart(2, '0')}:${minutes}`;
+            } else {
+                throw new Error('Invalid time format. Please use HH:MM format (e.g., 06:00, 14:30)');
+            }
+        }
+    } else {
+        throw new Error('Time must be a string');
     }
     
-    return true;
+    // Normalize location (trim whitespace, capitalize first letter)
+    const normalizedLocation = runData.location.trim().replace(/\w\S*/g, (txt) => 
+        txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
+    );
+    
+    // Normalize pace (ensure consistent format)
+    const normalizedPace = runData.pace.trim();
+    if (!normalizedPace.match(/^[\d:]+(\/mile|\/km)$/)) {
+        throw new Error('Invalid pace format. Please use format like "8:30/mile" or "5:15/km"');
+    }
+    
+    // Normalize description (trim whitespace, default to empty string)
+    const normalizedDescription = (runData.description || '').trim();
+    
+    return {
+        date: normalizedDate,
+        time: normalizedTime,
+        location: normalizedLocation,
+        pace: normalizedPace,
+        description: normalizedDescription
+    };
 }
 
 // Routes
@@ -128,17 +186,13 @@ app.post('/api/runs', (req, res) => {
     try {
         const runData = req.body;
         
-        // Validate input data
-        validateRunData(runData);
+        // Validate and normalize input data
+        const normalizedData = validateAndNormalizeRunData(runData);
         
-        // Create new run with unique ID
+        // Create new run with unique ID and normalized data
         const newRun = {
             id: uuidv4(),
-            date: runData.date,
-            time: runData.time,
-            location: runData.location,
-            pace: runData.pace,
-            description: runData.description || ''
+            ...normalizedData
         };
         
         // Add to runs array
@@ -177,13 +231,13 @@ app.put('/api/runs/:id', (req, res) => {
         
         const runData = req.body;
         
-        // Validate input data
-        validateRunData(runData);
+        // Validate and normalize input data
+        const normalizedData = validateAndNormalizeRunData(runData);
         
         // Update the run
         const updatedRun = {
             ...runs[runIndex],
-            ...runData,
+            ...normalizedData,
             id: runId // Ensure ID doesn't change
         };
         

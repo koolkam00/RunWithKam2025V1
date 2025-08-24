@@ -112,11 +112,13 @@
                     <div class="input-group">
                         <label for="runDate">Date</label>
                         <input type="date" id="runDate" name="runDate" required>
+                        <small class="form-help">Select the date for the run</small>
                     </div>
                     
                     <div class="input-group">
                         <label for="runTime">Time</label>
                         <input type="time" id="runTime" name="runTime" required>
+                        <small class="form-help">Select the time (24-hour format)</small>
                     </div>
                 </div>
                 
@@ -127,7 +129,22 @@
                 
                 <div class="input-group">
                     <label for="runPace">Pace</label>
-                    <input type="text" id="runPace" name="runPace" placeholder="e.g., 8:30/mile" required>
+                    <select id="runPace" name="runPace" required>
+                        <option value="">Select pace</option>
+                        <option value="6:00/mile">6:00/mile (Very Fast)</option>
+                        <option value="6:30/mile">6:30/mile (Fast)</option>
+                        <option value="7:00/mile">7:00/mile (Fast)</option>
+                        <option value="7:30/mile">7:30/mile (Moderate-Fast)</option>
+                        <option value="8:00/mile">8:00/mile (Moderate)</option>
+                        <option value="8:30/mile">8:30/mile (Moderate)</option>
+                        <option value="9:00/mile">9:00/mile (Moderate-Slow)</option>
+                        <option value="9:30/mile">9:30/mile (Slow)</option>
+                        <option value="10:00/mile">10:00/mile (Slow)</option>
+                        <option value="10:30/mile">10:30/mile (Very Slow)</option>
+                        <option value="11:00/mile">11:00/mile (Very Slow)</option>
+                        <option value="12:00/mile">12:00/mile (Walking)</option>
+                    </select>
+                    <small class="form-help">Select your target pace per mile</small>
                 </div>
                 
                 <div class="input-group">
