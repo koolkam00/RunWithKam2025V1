@@ -13,6 +13,14 @@ app.use(cors());
 app.use(morgan('combined'));
 app.use(express.json());
 
+// Add cache control headers to prevent caching issues
+app.use((req, res, next) => {
+    res.header('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.header('Pragma', 'no-cache');
+    res.header('Expires', '0');
+    next();
+});
+
 // Helper function to create properly formatted dates
 function createFormattedDate(daysFromNow) {
     const date = new Date();
@@ -177,7 +185,9 @@ app.get('/api/runs', (req, res) => {
             success: true,
             data: sortedRuns,
             count: sortedRuns.length,
-            message: 'Runs retrieved successfully'
+            message: 'Runs retrieved successfully',
+            timestamp: new Date().toISOString(),
+            version: '1.0.0'
         });
     } catch (error) {
         console.error('❌ Error in GET /api/runs:', error);
