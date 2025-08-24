@@ -219,7 +219,7 @@ class APIService: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
     
     // MARK: - Notification Methods
     private func requestNotificationPermissions() {
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, error in
             if granted {
                 print("🔔 iOS App: Notification permissions granted")
             } else if let error = error {
@@ -258,7 +258,7 @@ class APIService: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
         content.title = "New Run Scheduled! 🏃‍♂️"
         content.body = "Run with Kam at \(run.location) on \(formatDate(run.date)) at \(run.time)"
         content.sound = .default
-        content.badge = NSNumber(value: 1) // Add badge support
+
         
         // Add run details to notification
         content.userInfo = [
@@ -296,7 +296,7 @@ class APIService: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
         content.title = "New Runs Added! 🏃‍♂️"
         content.body = "\(count) new runs have been scheduled. Check the calendar!"
         content.sound = .default
-        content.badge = NSNumber(value: count)
+
         
         let request = UNNotificationRequest(
             identifier: "multiple-runs-\(Date().timeIntervalSince1970)",
@@ -334,7 +334,7 @@ class APIService: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
         content.title = "Test Notification! 🧪"
         content.body = "This is a test notification from RunWithKam"
         content.sound = .default
-        content.badge = NSNumber(value: 1)
+
         
         let request = UNNotificationRequest(
             identifier: "test-notification-\(Date().timeIntervalSince1970)",
@@ -362,7 +362,7 @@ class APIService: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
     // MARK: - UNUserNotificationCenterDelegate
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         // Show notification even when app is in foreground
-        completionHandler([.banner, .sound, .badge])
+        completionHandler([.banner, .sound])
     }
     
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
