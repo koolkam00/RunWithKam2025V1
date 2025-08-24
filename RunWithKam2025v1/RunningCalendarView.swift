@@ -313,7 +313,7 @@ struct RunCardView: View {
 // MARK: - Data Models
 
 struct ScheduledRun: Identifiable, Codable {
-    let id: UUID
+    let id: String  // Changed from UUID to String to match backend
     let date: Date
     let time: String
     let location: String

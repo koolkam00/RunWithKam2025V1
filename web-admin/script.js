@@ -495,7 +495,12 @@ function hideDeleteModal() {
 
 // Utility functions
 function generateId() {
-    return Date.now().toString(36) + Math.random().toString(36).substr(2);
+    // Generate a proper UUID v4 format
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        const r = Math.random() * 16 | 0;
+        const v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
 }
 
 function saveRuns() {
@@ -511,7 +516,7 @@ function loadSampleData() {
         const today = new Date();
         runs = [
             {
-                id: '1',
+                id: generateId(),
                 date: new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1).toISOString(),
                 time: '06:00',
                 location: 'Central Park',
@@ -519,7 +524,7 @@ function loadSampleData() {
                 description: 'Morning run around the reservoir'
             },
             {
-                id: '2',
+                id: generateId(),
                 date: new Date(today.getFullYear(), today.getMonth(), today.getDate() + 3).toISOString(),
                 time: '17:30',
                 location: 'Brooklyn Bridge',
@@ -527,7 +532,7 @@ function loadSampleData() {
                 description: 'Sunset run across the bridge'
             },
             {
-                id: '3',
+                id: generateId(),
                 date: new Date(today.getFullYear(), today.getMonth(), today.getDate() + 7).toISOString(),
                 time: '07:00',
                 location: 'Prospect Park',
