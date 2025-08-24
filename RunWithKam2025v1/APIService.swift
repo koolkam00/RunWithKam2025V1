@@ -22,6 +22,14 @@ class APIService: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
         // Request notification permissions when service is initialized
         requestNotificationPermissions()
         UNUserNotificationCenter.current().delegate = self
+        
+        // Listen for app becoming active to clear badges
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(appDidBecomeActive),
+            name: UIApplication.didBecomeActiveNotification,
+            object: nil
+        )
     }
     
     // MARK: - Fetch all runs
@@ -222,6 +230,10 @@ class APIService: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, error in
             if granted {
                 print("🔔 iOS App: Notification permissions granted")
+                // Clear any existing badges
+                DispatchQueue.main.async {
+                    UIApplication.shared.applicationIconBadgeNumber = 0
+                }
             } else if let error = error {
                 print("❌ iOS App: Notification permission error: \(error)")
             } else {
@@ -258,7 +270,7 @@ class APIService: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
         content.title = "New Run Scheduled! 🏃‍♂️"
         content.body = "Run with Kam at \(run.location) on \(formatDate(run.date)) at \(run.time)"
         content.sound = .default
-
+        content.badge = NSNumber(value: 0) // Explicitly set to 0 to prevent iOS from showing badges
         
         // Add run details to notification
         content.userInfo = [
@@ -279,6 +291,10 @@ class APIService: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
                 print("❌ iOS App: Failed to show notification: \(error)")
             } else {
                 print("🔔 iOS App: New run notification shown for \(run.location)")
+                // Clear badge after showing notification
+                DispatchQueue.main.async {
+                    UIApplication.shared.applicationIconBadgeNumber = 0
+                }
             }
         }
         
@@ -296,7 +312,7 @@ class APIService: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
         content.title = "New Runs Added! 🏃‍♂️"
         content.body = "\(count) new runs have been scheduled. Check the calendar!"
         content.sound = .default
-
+        content.badge = NSNumber(value: 0) // Explicitly set to 0 to prevent iOS from showing badges
         
         let request = UNNotificationRequest(
             identifier: "multiple-runs-\(Date().timeIntervalSince1970)",
@@ -309,6 +325,10 @@ class APIService: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
                 print("❌ iOS App: Failed to show multiple runs notification: \(error)")
             } else {
                 print("🔔 iOS App: Multiple runs notification shown for \(count) runs")
+                // Clear badge after showing notification
+                DispatchQueue.main.async {
+                    UIApplication.shared.applicationIconBadgeNumber = 0
+                }
             }
         }
         
@@ -334,7 +354,7 @@ class APIService: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
         content.title = "Test Notification! 🧪"
         content.body = "This is a test notification from RunWithKam"
         content.sound = .default
-
+        content.badge = NSNumber(value: 0) // Explicitly set to 0 to prevent iOS from showing badges
         
         let request = UNNotificationRequest(
             identifier: "test-notification-\(Date().timeIntervalSince1970)",
@@ -347,6 +367,10 @@ class APIService: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
                 print("❌ iOS App: Failed to show test notification: \(error)")
             } else {
                 print("🔔 iOS App: Test notification shown successfully")
+                // Clear badge after showing notification
+                DispatchQueue.main.async {
+                    UIApplication.shared.applicationIconBadgeNumber = 0
+                }
             }
         }
         
@@ -369,6 +393,12 @@ class APIService: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
         // Handle notification tap
         print("🔔 iOS App: User tapped notification: \(response.notification.request.identifier)")
         completionHandler()
+    }
+    
+    @objc private func appDidBecomeActive() {
+        // Clear badge when app becomes active
+        UIApplication.shared.applicationIconBadgeNumber = 0
+        print("🔔 iOS App: App became active, cleared badge")
     }
 }
 
