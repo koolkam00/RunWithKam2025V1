@@ -391,10 +391,9 @@ async function handleRunSubmit(event) {
     
     // Create date in Eastern Standard Time (EST) - always UTC-5
     // This ensures consistent timezone handling regardless of user's location
-    // We create the date at midnight EST, then convert to UTC
-    const estDate = new Date(year, month - 1, day, 0, 0, 0, 0);
-    // EST is UTC-5, so we need to add 5 hours to get the correct UTC time
-    const utcDate = new Date(estDate.getTime() + (5 * 60 * 60 * 1000));
+    // Create the date directly in EST by specifying the timezone offset
+    const estDateString = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}T00:00:00-05:00`;
+    const utcDate = new Date(estDateString);
     
     // Format data consistently
     const runData = {
@@ -408,11 +407,10 @@ async function handleRunSubmit(event) {
     console.log('📅 Web admin sending data:', {
         originalDate: dateString,
         originalTime: timeString,
-        estDate: estDate.toISOString(),
+        estDateString: estDateString,
         utcDate: utcDate.toISOString(),
-        estMidnight: `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}T00:00:00-05:00`,
         timezone: 'EST (UTC-5)',
-        explanation: 'EST midnight converted to UTC (adds 5 hours)'
+        explanation: 'Direct EST date creation with timezone offset'
     });
     
     if (editingRunId) {
@@ -1022,36 +1020,38 @@ function testDateConversion() {
     
     console.log('🧪 Testing date conversion for:', testDate);
     
-    // Method 1: Current approach
-    const estDate = new Date(year, month - 1, day, 0, 0, 0, 0);
-    const utcDate = new Date(estDate.getTime() + (5 * 60 * 60 * 1000));
+    // Method 1: Direct EST creation with timezone offset (NEW APPROACH)
+    const estDateString = `${testDate}T00:00:00-05:00`;
+    const utcDate = new Date(estDateString);
     
-    console.log('📅 Method 1 (Current):', {
+    console.log('📅 Method 1 (NEW - Direct EST):', {
         input: testDate,
-        estDate: estDate.toISOString(),
+        estDateString: estDateString,
         utcDate: utcDate.toISOString(),
-        estDisplay: estDate.toLocaleDateString('en-US', { timeZone: 'America/New_York' }),
+        estDisplay: utcDate.toLocaleDateString('en-US', { timeZone: 'America/New_York' }),
         utcDisplay: utcDate.toLocaleDateString('en-US', { timeZone: 'UTC' })
     });
     
-    // Method 2: Alternative approach using Date.UTC
-    const utcDate2 = new Date(Date.UTC(year, month - 1, day, 5, 0, 0, 0)); // 5 AM UTC = midnight EST
+    // Method 2: Old approach using Date constructor
+    const estDate = new Date(year, month - 1, day, 0, 0, 0, 0);
+    const utcDate2 = new Date(estDate.getTime() + (5 * 60 * 60 * 1000));
     
-    console.log('📅 Method 2 (Alternative):', {
+    console.log('📅 Method 2 (OLD - Date constructor):', {
         input: testDate,
+        estDate: estDate.toISOString(),
         utcDate: utcDate2.toISOString(),
-        estDisplay: utcDate2.toLocaleDateString('en-US', { timeZone: 'America/New_York' }),
+        estDisplay: estDate.toLocaleDateString('en-US', { timeZone: 'America/New_York' }),
         utcDisplay: utcDate2.toLocaleDateString('en-US', { timeZone: 'UTC' })
     });
     
-    // Method 3: Direct EST creation
-    const estDate3 = new Date(`${testDate}T00:00:00-05:00`);
+    // Method 3: Using Date.UTC
+    const utcDate3 = new Date(Date.UTC(year, month - 1, day, 5, 0, 0, 0)); // 5 AM UTC = midnight EST
     
-    console.log('📅 Method 3 (Direct EST):', {
+    console.log('📅 Method 3 (Date.UTC):', {
         input: testDate,
-        estDate: estDate3.toISOString(),
-        estDisplay: estDate3.toLocaleDateString('en-US', { timeZone: 'America/New_York' }),
-        utcDisplay: estDate3.toLocaleDateString('en-US', { timeZone: 'UTC' })
+        utcDate: utcDate3.toISOString(),
+        estDisplay: utcDate3.toLocaleDateString('en-US', { timeZone: 'America/New_York' }),
+        utcDisplay: utcDate3.toLocaleDateString('en-US', { timeZone: 'UTC' })
     });
 }
 
