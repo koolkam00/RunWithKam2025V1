@@ -16,7 +16,7 @@ app.use(express.json());
 // In-memory data storage (replace with database in production)
 let runs = [
     {
-        id: '1',
+        id: uuidv4(),
         date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // Tomorrow
         time: '06:00',
         location: 'Central Park',
@@ -24,15 +24,15 @@ let runs = [
         description: 'Morning run around the reservoir'
     },
     {
-        id: '2',
-        date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days from now
+        id: uuidv4(),
+        date: new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString(), // 3 days from now
         time: '17:30',
         location: 'Brooklyn Bridge',
         pace: '9:00/mile',
         description: 'Sunset run across the bridge'
     },
     {
-        id: '3',
+        id: uuidv4(),
         date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
         time: '07:00',
         location: 'Prospect Park',
@@ -40,6 +40,12 @@ let runs = [
         description: 'Speed workout on the loop'
     }
 ];
+
+// Helper function to validate UUID format
+function isValidUUID(uuid) {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(uuid);
+}
 
 // Helper function to find run by ID
 function findRunById(id) {
@@ -135,6 +141,12 @@ app.get('/api/runs', (req, res) => {
         // Sort runs by date
         const sortedRuns = [...runs].sort((a, b) => new Date(a.date) - new Date(b.date));
         
+        // Log the response for debugging
+        console.log(`📊 Returning ${sortedRuns.length} runs`);
+        sortedRuns.forEach(run => {
+            console.log(`  - Run ID: ${run.id} (${typeof run.id}) - ${run.location} at ${run.time}`);
+        });
+        
         res.json({
             success: true,
             data: sortedRuns,
@@ -142,6 +154,7 @@ app.get('/api/runs', (req, res) => {
             message: 'Runs retrieved successfully'
         });
     } catch (error) {
+        console.error('❌ Error in GET /api/runs:', error);
         res.status(500).json({
             success: false,
             data: null,
@@ -195,8 +208,15 @@ app.post('/api/runs', (req, res) => {
             ...normalizedData
         };
         
+        // Ensure ID is a valid UUID string
+        if (!newRun.id || typeof newRun.id !== 'string' || newRun.id.length !== 36) {
+            throw new Error('Failed to generate valid UUID');
+        }
+        
         // Add to runs array
         runs.push(newRun);
+        
+        console.log(`✅ Created new run with ID: ${newRun.id}`);
         
         res.status(201).json({
             success: true,
@@ -218,6 +238,17 @@ app.post('/api/runs', (req, res) => {
 app.put('/api/runs/:id', (req, res) => {
     try {
         const runId = req.params.id;
+        
+        // Validate UUID format
+        if (!isValidUUID(runId)) {
+            return res.status(400).json({
+                success: false,
+                data: null,
+                count: 0,
+                message: 'Invalid run ID format'
+            });
+        }
+        
         const runIndex = runs.findIndex(run => run.id === runId);
         
         if (runIndex === -1) {
@@ -243,6 +274,8 @@ app.put('/api/runs/:id', (req, res) => {
         
         runs[runIndex] = updatedRun;
         
+        console.log(`✅ Updated run with ID: ${runId}`);
+        
         res.json({
             success: true,
             data: updatedRun,
@@ -250,6 +283,7 @@ app.put('/api/runs/:id', (req, res) => {
             message: 'Run updated successfully'
         });
     } catch (error) {
+        console.error('❌ Error in PUT /api/runs:', error);
         res.status(400).json({
             success: false,
             data: null,
@@ -346,13 +380,38 @@ app.use((error, req, res, next) => {
     });
 });
 
+// Clean up any invalid IDs in existing data
+function cleanupInvalidIDs() {
+    let cleanedCount = 0;
+    runs = runs.map(run => {
+        if (!isValidUUID(run.id)) {
+            console.log(`🔄 Fixing invalid ID: ${run.id} -> ${uuidv4()}`);
+            cleanedCount++;
+            return { ...run, id: uuidv4() };
+        }
+        return run;
+    });
+    
+    if (cleanedCount > 0) {
+        console.log(`🧹 Cleaned up ${cleanedCount} invalid IDs`);
+    }
+}
+
 // Start server
 app.listen(PORT, () => {
+    // Clean up any invalid IDs first
+    cleanupInvalidIDs();
+    
     console.log(`🚀 Run With Kam API server running on port ${PORT}`);
     console.log(`📱 iOS app can connect to: http://localhost:${PORT}/api`);
     console.log(`🌐 Web admin can connect to: http://localhost:${PORT}/api`);
     console.log(`🔍 Health check: http://localhost:${PORT}/api/health`);
     console.log(`📊 Total runs loaded: ${runs.length}`);
+    
+    // Log all run IDs for verification
+    runs.forEach((run, index) => {
+        console.log(`  Run ${index + 1}: ID=${run.id} (${isValidUUID(run.id) ? '✅ Valid' : '❌ Invalid'})`);
+    });
 });
 
 module.exports = app;
