@@ -59,6 +59,9 @@ function setupEventListeners() {
     // Set today's date as placeholder for new runs
     setTodayDatePlaceholder();
     
+    // Add time input formatting
+    setupTimeInputFormatting();
+    
     // Modal buttons
     document.getElementById('closeModal').addEventListener('click', hideRunModal);
     document.getElementById('cancelRun').addEventListener('click', hideRunModal);
@@ -245,7 +248,7 @@ function showAddRunModal() {
     // Set today's date for new runs
     setTodayDatePlaceholder();
     
-    // Set default time
+    // Set default time (text input)
     document.getElementById('runTime').value = '08:00';
     
     runModal.classList.remove('hidden');
@@ -312,7 +315,7 @@ async function handleRunSubmit(event) {
     // Validate time format (HH:MM)
     const timeRegex = /^\d{2}:\d{2}$/;
     if (!timeRegex.test(timeString)) {
-        showNotification('Please enter time in HH:MM format (e.g., 06:00)', 'error');
+        showNotification('Please enter time in HH:MM format (e.g., 06:00, 17:30)', 'error');
         return;
     }
     
@@ -321,8 +324,19 @@ async function handleRunSubmit(event) {
     const [hours, minutes] = timeString.split(':').map(Number);
     
     // Validate date components
-    if (month < 1 || month > 12 || day < 1 || day > 31 || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
-        showNotification('Please enter valid date and time values', 'error');
+    if (month < 1 || month > 12 || day < 1 || day > 31) {
+        showNotification('Please enter valid date values (month 1-12, day 1-31)', 'error');
+        return;
+    }
+    
+    // Validate time components
+    if (hours < 0 || hours > 23) {
+        showNotification('Please enter valid hour (0-23)', 'error');
+        return;
+    }
+    
+    if (minutes < 0 || minutes > 59) {
+        showNotification('Please enter valid minutes (0-59)', 'error');
         return;
     }
     
@@ -604,6 +618,47 @@ function setTodayDatePlaceholder() {
         if (!editingRunId) {
             dateInput.value = todayString;
         }
+    }
+    
+    // Set default time for new runs
+    const timeInput = document.getElementById('runTime');
+    if (timeInput && !editingRunId) {
+        timeInput.value = '08:00';
+    }
+}
+
+// Setup time input formatting and validation
+function setupTimeInputFormatting() {
+    const timeInput = document.getElementById('runTime');
+    if (timeInput) {
+        // Auto-format time input (HH:MM)
+        timeInput.addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\D/g, ''); // Remove non-digits
+            
+            if (value.length >= 2) {
+                // Insert colon after first two digits
+                value = value.substring(0, 2) + ':' + value.substring(2, 4);
+            }
+            
+            // Limit to 5 characters (HH:MM)
+            if (value.length > 5) {
+                value = value.substring(0, 5);
+            }
+            
+            e.target.value = value;
+        });
+        
+        // Validate on blur
+        timeInput.addEventListener('blur', function(e) {
+            const value = e.target.value;
+            const timeRegex = /^\d{2}:\d{2}$/;
+            
+            if (value && !timeRegex.test(value)) {
+                e.target.classList.add('invalid');
+            } else {
+                e.target.classList.remove('invalid');
+            }
+        });
     }
 }
 

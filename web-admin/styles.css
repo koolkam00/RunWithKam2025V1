@@ -679,6 +679,17 @@ body {
     letter-spacing: 1px;
 }
 
+#runTime:valid {
+    border-color: #28a745;
+    background-color: #f8fff9;
+}
+
+#runTime:invalid,
+#runTime.invalid {
+    border-color: #dc3545;
+    background-color: #fff8f8;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
     .update-notification {
