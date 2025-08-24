@@ -13,11 +13,20 @@ app.use(cors());
 app.use(morgan('combined'));
 app.use(express.json());
 
+// Helper function to create properly formatted dates
+function createFormattedDate(daysFromNow) {
+    const date = new Date();
+    date.setDate(date.getDate() + daysFromNow);
+    // Set time to noon to avoid timezone issues
+    date.setHours(12, 0, 0, 0);
+    return date.toISOString();
+}
+
 // In-memory data storage (replace with database in production)
 let runs = [
     {
         id: uuidv4(),
-        date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // Tomorrow
+        date: createFormattedDate(1), // Tomorrow
         time: '06:00',
         location: 'Central Park',
         pace: '8:30/mile',
@@ -25,7 +34,7 @@ let runs = [
     },
     {
         id: uuidv4(),
-        date: new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString(), // 3 days from now
+        date: createFormattedDate(3), // 3 days from now
         time: '17:30',
         location: 'Brooklyn Bridge',
         pace: '9:00/mile',
@@ -33,7 +42,7 @@ let runs = [
     },
     {
         id: uuidv4(),
-        date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
+        date: createFormattedDate(7), // 7 days from now
         time: '07:00',
         location: 'Prospect Park',
         pace: '7:30/mile',
@@ -70,9 +79,16 @@ function validateAndNormalizeRunData(runData) {
             throw new Error('Invalid date format');
         }
         
-        // Ensure date is set to start of day for consistency
-        normalizedDate = new Date(parsedDate.getFullYear(), parsedDate.getMonth(), parsedDate.getDate());
-        normalizedDate = normalizedDate.toISOString();
+        // Ensure date is set to start of day for consistency and proper ISO format
+        const year = parsedDate.getFullYear();
+        const month = parsedDate.getMonth();
+        const day = parsedDate.getDate();
+        
+        // Create a new date at noon to avoid timezone issues
+        const normalizedDateObj = new Date(year, month, day, 12, 0, 0, 0);
+        normalizedDate = normalizedDateObj.toISOString();
+        
+        console.log(`📅 Date normalized: ${runData.date} -> ${normalizedDate}`);
     } catch (error) {
         throw new Error('Invalid date format. Please use ISO 8601 format (YYYY-MM-DDTHH:mm:ss.sssZ)');
     }
@@ -397,10 +413,47 @@ function cleanupInvalidIDs() {
     }
 }
 
+// Regenerate sample data with proper dates
+function regenerateSampleData() {
+    console.log('🔄 Regenerating sample data with proper dates...');
+    
+    runs = [
+        {
+            id: uuidv4(),
+            date: createFormattedDate(1), // Tomorrow
+            time: '06:00',
+            location: 'Central Park',
+            pace: '8:30/mile',
+            description: 'Morning run around the reservoir'
+        },
+        {
+            id: uuidv4(),
+            date: createFormattedDate(3), // 3 days from now
+            time: '17:30',
+            location: 'Brooklyn Bridge',
+            pace: '9:00/mile',
+            description: 'Sunset run across the bridge'
+        },
+        {
+            id: uuidv4(),
+            date: createFormattedDate(7), // 7 days from now
+            time: '07:00',
+            location: 'Prospect Park',
+            pace: '7:30/mile',
+            description: 'Speed workout on the loop'
+        }
+    ];
+    
+    console.log('✅ Sample data regenerated with proper dates');
+}
+
 // Start server
 app.listen(PORT, () => {
     // Clean up any invalid IDs first
     cleanupInvalidIDs();
+    
+    // Regenerate sample data with proper dates
+    regenerateSampleData();
     
     console.log(`🚀 Run With Kam API server running on port ${PORT}`);
     console.log(`📱 iOS app can connect to: http://localhost:${PORT}/api`);
@@ -408,9 +461,10 @@ app.listen(PORT, () => {
     console.log(`🔍 Health check: http://localhost:${PORT}/api/health`);
     console.log(`📊 Total runs loaded: ${runs.length}`);
     
-    // Log all run IDs for verification
+    // Log all run IDs and dates for verification
     runs.forEach((run, index) => {
         console.log(`  Run ${index + 1}: ID=${run.id} (${isValidUUID(run.id) ? '✅ Valid' : '❌ Invalid'})`);
+        console.log(`    Date: ${run.date} (${new Date(run.date).toISOString() === run.date ? '✅ Valid ISO' : '❌ Invalid ISO'})`);
     });
 });
 
