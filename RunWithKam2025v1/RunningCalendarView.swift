@@ -523,8 +523,10 @@ struct ScheduledRun: Identifiable, Codable {
         
         return nil
     }
-    
-    // MARK: - Notification Handling
+}
+
+// MARK: - Notification Handling
+extension RunningCalendarView {
     private func setupNotificationHandling() {
         // Listen for in-app notifications
         NotificationCenter.default.addObserver(
@@ -552,10 +554,7 @@ struct ScheduledRun: Identifiable, Codable {
         formatter.timeStyle = .none
         return formatter.string(from: date)
     }
-}
-
-// MARK: - Notification Handling
-extension RunningCalendarView {
+    
     func checkForNewRuns() {
         Task {
             do {
@@ -570,6 +569,8 @@ extension RunningCalendarView {
         }
     }
 }
+
+
 
 #Preview {
     RunningCalendarView()
