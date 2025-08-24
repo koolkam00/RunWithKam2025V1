@@ -108,31 +108,6 @@ function initializeSampleData() {
     
     console.log('📊 Sample data initialized with notifications');
 }
-    {
-        id: uuidv4(),
-        date: createFormattedDate(1), // Tomorrow
-        time: '06:00',
-        location: 'Central Park',
-        pace: '8:30/mile',
-        description: 'Morning run around the reservoir'
-    },
-    {
-        id: uuidv4(),
-        date: createFormattedDate(3), // 3 days from now
-        time: '17:30',
-        location: 'Brooklyn Bridge',
-        pace: '9:00/mile',
-        description: 'Sunset run across the bridge'
-    },
-    {
-        id: uuidv4(),
-        date: createFormattedDate(7), // 7 days from now
-        time: '07:00',
-        location: 'Prospect Park',
-        pace: '7:30/mile',
-        description: 'Speed workout on the loop'
-    }
-];
 
 // Helper function to validate UUID format
 function isValidUUID(uuid) {
