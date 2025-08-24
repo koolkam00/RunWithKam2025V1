@@ -339,13 +339,14 @@ struct ScheduledRun: Identifiable, Codable {
         let dateString = try container.decode(String.self, forKey: .date)
         
         // Try multiple date parsing strategies
-        if let parsedDate = parseDate(dateString) {
+        if let parsedDate = ScheduledRun.parseDate(dateString) {
             date = parsedDate
         } else {
-            throw DecodingError.dataCorruptedError(
-                forKey: .date,
-                in: container,
-                debugDescription: "Unable to parse date string: \(dateString)"
+            throw DecodingError.dataCorrupted(
+                DecodingError.Context(
+                    codingPath: [],
+                    debugDescription: "Unable to parse date string: \(dateString)"
+                )
             )
         }
     }
@@ -409,8 +410,8 @@ struct ScheduledRun: Identifiable, Codable {
             )
         }
         
-        // Use our robust date parsing
-        guard let parsedDate = parseDate(dateString) else {
+        // Use our robust date parsing (static method)
+        guard let parsedDate = ScheduledRun.parseDate(dateString) else {
             throw DecodingError.dataCorrupted(
                 DecodingError.Context(
                     codingPath: [],
@@ -427,8 +428,8 @@ struct ScheduledRun: Identifiable, Codable {
         self.description = description
     }
     
-    // Robust date parsing function
-    private func parseDate(_ dateString: String) -> Date? {
+    // Robust date parsing function (static to avoid initialization issues)
+    private static func parseDate(_ dateString: String) -> Date? {
         // Strategy 1: Try ISO8601 with fractional seconds
         let iso8601Formatter = ISO8601DateFormatter()
         iso8601Formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
