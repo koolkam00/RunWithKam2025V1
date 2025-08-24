@@ -295,15 +295,51 @@ function hideRunModal() {
 async function handleRunSubmit(event) {
     event.preventDefault();
     
+    console.log('🚀 Form submission started');
+    
     const formData = new FormData(runForm);
     const dateString = formData.get('runDate');
     const timeString = formData.get('runTime');
+    const location = formData.get('runLocation');
+    const pace = formData.get('runPace');
+    
+    console.log('📝 Form data:', {
+        date: dateString,
+        time: timeString,
+        location: location,
+        pace: pace
+    });
     
     // Validate required fields
-    if (!dateString || !timeString || !formData.get('runLocation') || !formData.get('runPace')) {
-        showNotification('Please fill in all required fields', 'error');
+    console.log('🔍 Validating required fields...');
+    
+    if (!dateString) {
+        console.log('❌ Date is missing');
+        showNotification('Please enter a date', 'error');
         return;
     }
+    
+    if (!timeString) {
+        console.log('❌ Time is missing');
+        showNotification('Please enter a time', 'error');
+        return;
+    }
+    
+    if (!pace) {
+        console.log('❌ Pace is missing');
+        showNotification('Please select a pace', 'error');
+        return;
+    }
+    
+    // Validate location (not empty or just whitespace)
+    console.log('🔍 Validating location...');
+    if (!location || !location.trim()) {
+        console.log('❌ Location is missing or empty:', location);
+        showNotification('Please enter a location for your run', 'error');
+        return;
+    }
+    
+    console.log('✅ All required fields are present');
     
     // Validate date format (YYYY-MM-DD)
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
@@ -355,7 +391,6 @@ async function handleRunSubmit(event) {
     console.log('📅 Web admin sending data:', {
         originalDate: dateString,
         originalTime: timeString,
-        localDateTime: localDateTime.toISOString(),
         utcDate: utcDate.toISOString(),
         finalData: runData
     });

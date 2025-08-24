@@ -679,6 +679,17 @@ body {
     letter-spacing: 1px;
 }
 
+/* Location input styling */
+#runLocation:valid {
+    border-color: #28a745;
+    background-color: #f8fff9;
+}
+
+#runLocation:invalid {
+    border-color: #dc3545;
+    background-color: #fff8f8;
+}
+
 #runTime:valid {
     border-color: #28a745;
     background-color: #f8fff9;
