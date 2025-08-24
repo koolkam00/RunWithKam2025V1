@@ -17,8 +17,8 @@ app.use(express.json());
 function createFormattedDate(daysFromNow) {
     const date = new Date();
     date.setDate(date.getDate() + daysFromNow);
-    // Set time to noon to avoid timezone issues
-    date.setHours(12, 0, 0, 0);
+    // Set time to midnight UTC to ensure maximum compatibility
+    date.setUTCHours(0, 0, 0, 0);
     return date.toISOString();
 }
 
@@ -84,8 +84,8 @@ function validateAndNormalizeRunData(runData) {
         const month = parsedDate.getMonth();
         const day = parsedDate.getDate();
         
-        // Create a new date at noon to avoid timezone issues
-        const normalizedDateObj = new Date(year, month, day, 12, 0, 0, 0);
+        // Create a new date at midnight UTC for maximum compatibility
+        const normalizedDateObj = new Date(Date.UTC(year, month, day, 0, 0, 0, 0));
         normalizedDate = normalizedDateObj.toISOString();
         
         console.log(`📅 Date normalized: ${runData.date} -> ${normalizedDate}`);
@@ -161,7 +161,17 @@ app.get('/api/runs', (req, res) => {
         console.log(`📊 Returning ${sortedRuns.length} runs`);
         sortedRuns.forEach(run => {
             console.log(`  - Run ID: ${run.id} (${typeof run.id}) - ${run.location} at ${run.time}`);
+            console.log(`    Date: ${run.date} (Type: ${typeof run.date})`);
         });
+        
+        // Log the full response structure for debugging
+        const responseData = {
+            success: true,
+            data: sortedRuns,
+            count: sortedRuns.length,
+            message: 'Runs retrieved successfully'
+        };
+        console.log(`📤 Response structure:`, JSON.stringify(responseData, null, 2));
         
         res.json({
             success: true,
