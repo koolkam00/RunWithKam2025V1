@@ -51,6 +51,11 @@ function setupEventListeners() {
     document.getElementById('prevMonth').addEventListener('click', () => navigateMonth(-1));
     document.getElementById('nextMonth').addEventListener('click', () => navigateMonth(1));
     
+    // Debug button
+    if (document.getElementById('debugBtn')) {
+        document.getElementById('debugBtn').addEventListener('click', debugDateConversion);
+    }
+    
     // Modal buttons
     document.getElementById('closeModal').addEventListener('click', hideRunModal);
     document.getElementById('cancelRun').addEventListener('click', hideRunModal);
@@ -253,11 +258,24 @@ function showEditRunModal(runId) {
     
     // Populate form with run data
     const runDate = new Date(run.date);
-    document.getElementById('runDate').value = runDate.toISOString().split('T')[0];
+    
+    // Ensure we get the local date (not UTC) for the form
+    const localDate = new Date(runDate.getTime() - (runDate.getTimezoneOffset() * 60000));
+    const dateString = localDate.toISOString().split('T')[0];
+    
+    document.getElementById('runDate').value = dateString;
     document.getElementById('runTime').value = run.time;
     document.getElementById('runLocation').value = run.location;
     document.getElementById('runPace').value = run.pace;
     document.getElementById('runDescription').value = run.description || '';
+    
+    console.log('📅 Edit modal populated:', {
+        originalDate: run.date,
+        runDate: runDate.toISOString(),
+        localDate: localDate.toISOString(),
+        formDate: dateString,
+        time: run.time
+    });
     
     runModal.classList.remove('hidden');
 }
@@ -284,18 +302,33 @@ async function handleRunSubmit(event) {
         return;
     }
     
-    // Combine date and time into proper ISO 8601 datetime string
-    const combinedDateTime = new Date(`${dateString}T${timeString}:00`);
-    const isoDateTime = combinedDateTime.toISOString();
+    // Create date in local timezone first
+    const localDateTime = new Date(`${dateString}T${timeString}:00`);
+    
+    // Convert to UTC midnight for maximum iOS compatibility
+    const utcDate = new Date(Date.UTC(
+        localDateTime.getFullYear(),
+        localDateTime.getMonth(),
+        localDateTime.getDate(),
+        0, 0, 0, 0
+    ));
     
     // Format data consistently
     const runData = {
-        date: isoDateTime,
+        date: utcDate.toISOString(), // Always use UTC midnight
         time: timeString, // Keep original time format for display
         location: formData.get('runLocation').trim(),
         pace: formData.get('runPace'),
         description: (formData.get('runDescription') || '').trim()
     };
+    
+    console.log('📅 Web admin sending data:', {
+        originalDate: dateString,
+        originalTime: timeString,
+        localDateTime: localDateTime.toISOString(),
+        utcDate: utcDate.toISOString(),
+        finalData: runData
+    });
     
     if (editingRunId) {
         // Update existing run
@@ -538,6 +571,61 @@ window.addEventListener('resize', function() {
         renderCalendar();
     }
 });
+
+// Debug function to test date conversion
+function debugDateConversion() {
+    console.log('🔍 Debugging date conversion...');
+    
+    // Test current form values
+    const formData = new FormData(runForm);
+    const dateString = formData.get('runDate');
+    const timeString = formData.get('runTime');
+    
+    if (dateString && timeString) {
+        console.log('📅 Form values:', { dateString, timeString });
+        
+        // Test the same conversion logic used in form submission
+        const localDateTime = new Date(`${dateString}T${timeString}:00`);
+        const utcDate = new Date(Date.UTC(
+            localDateTime.getFullYear(),
+            localDateTime.getMonth(),
+            localDateTime.getDate(),
+            0, 0, 0, 0
+        ));
+        
+        console.log('🔄 Date conversion test:', {
+            originalDate: dateString,
+            originalTime: timeString,
+            localDateTime: localDateTime.toISOString(),
+            utcDate: utcDate.toISOString(),
+            timezoneOffset: localDateTime.getTimezoneOffset(),
+            isLocalDateValid: !isNaN(localDateTime.getTime()),
+            isUtcDateValid: !isNaN(utcDate.getTime())
+        });
+    } else {
+        console.log('⚠️ No form data to test');
+    }
+    
+    // Test API response parsing
+    console.log('🌐 Testing API response...');
+    fetch('http://localhost:3000/api/runs')
+        .then(response => response.json())
+        .then(data => {
+            console.log('📊 API Response:', data);
+            if (data.data && data.data.length > 0) {
+                const firstRun = data.data[0];
+                console.log('📅 First run date analysis:', {
+                    originalDate: firstRun.date,
+                    parsedDate: new Date(firstRun.date),
+                    isValid: !isNaN(new Date(firstRun.date).getTime()),
+                    isoString: new Date(firstRun.date).toISOString()
+                });
+            }
+        })
+        .catch(error => {
+            console.error('❌ API test failed:', error);
+        });
+}
 
 // Export functions for potential API integration
 window.RunWithKamAdmin = {
