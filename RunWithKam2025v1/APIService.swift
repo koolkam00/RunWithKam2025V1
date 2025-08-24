@@ -24,7 +24,18 @@ class APIService: ObservableObject {
             throw APIError.invalidURL
         }
         
-        let (data, response) = try await URLSession.shared.data(from: url)
+        var request = URLRequest(url: url)
+        
+        // Add cache-busting headers to ensure fresh data
+        request.setValue("no-cache", forHTTPHeaderField: "Cache-Control")
+        request.setValue("no-cache", forHTTPHeaderField: "Pragma")
+        request.setValue("0", forHTTPHeaderField: "Expires")
+        
+        // Add timestamp to prevent caching
+        let timestamp = Date().timeIntervalSince1970
+        request.setValue("\(timestamp)", forHTTPHeaderField: "X-Timestamp")
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse,
               httpResponse.statusCode == 200 else {
@@ -34,8 +45,31 @@ class APIService: ObservableObject {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         
-        let apiResponse = try decoder.decode(APIResponse<[ScheduledRun]>.self, from: data)
-        return apiResponse.data
+        // Add debugging for date parsing
+        print("📱 iOS App: Attempting to decode API response...")
+        print("📱 iOS App: Raw data length: \(data.count) bytes")
+        
+        do {
+            let apiResponse = try decoder.decode(APIResponse<[ScheduledRun]>.self, from: data)
+            print("📱 iOS App: Successfully decoded \(apiResponse.data.count) runs")
+            
+            // Log the first run's date for debugging
+            if let firstRun = apiResponse.data.first {
+                print("📱 iOS App: First run date: \(firstRun.date)")
+                print("📱 iOS App: First run date type: \(type(of: firstRun.date))")
+            }
+            
+            return apiResponse.data
+        } catch {
+            print("❌ iOS App: Decoding error: \(error)")
+            
+            // Try to print the raw JSON for debugging
+            if let jsonString = String(data: data, encoding: .utf8) {
+                print("📱 iOS App: Raw JSON response: \(jsonString)")
+            }
+            
+            throw error
+        }
     }
     
     // MARK: - Create new run
@@ -105,6 +139,22 @@ class APIService: ObservableObject {
         }
         
         return true
+    }
+    
+    // MARK: - Clear cache and force fresh data
+    func clearCacheAndForceRefresh() {
+        // Clear any cached data
+        URLCache.shared.removeAllCachedResponses()
+        
+        // Force a fresh fetch
+        Task {
+            do {
+                let freshRuns = try await fetchRuns()
+                print("📱 iOS App: Cache cleared, fetched \(freshRuns.count) fresh runs")
+            } catch {
+                print("❌ iOS App: Failed to fetch fresh data after cache clear: \(error)")
+            }
+        }
     }
     
     // MARK: - Start real-time updates
