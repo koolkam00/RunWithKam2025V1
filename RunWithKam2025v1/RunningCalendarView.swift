@@ -58,6 +58,20 @@ struct RunningCalendarView: View {
                         .background(Color.green)
                         .cornerRadius(8)
                     }
+                    
+                    Button(action: {
+                        apiService.debugNotificationSystem()
+                    }) {
+                        HStack {
+                            Image(systemName: "ladybug")
+                            Text("Debug Notifications")
+                        }
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(Color.purple)
+                        .cornerRadius(8)
+                    }
                 }
                 .padding(.bottom, 10)
                 

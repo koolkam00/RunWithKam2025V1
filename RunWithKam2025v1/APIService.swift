@@ -228,6 +228,7 @@ class APIService: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
     
     // MARK: - Notification Methods
     private func requestNotificationPermissions() {
+        print("🔔 iOS App: Requesting notification permissions...")
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, error in
             if granted {
                 print("🔔 iOS App: Notification permissions granted")
@@ -241,6 +242,9 @@ class APIService: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
                         }
                     }
                 }
+                
+                // Check current notification settings
+                self.checkNotificationSettings()
             } else if let error = error {
                 print("❌ iOS App: Notification permission error: \(error)")
             } else {
@@ -249,30 +253,53 @@ class APIService: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
         }
     }
     
+    private func checkNotificationSettings() {
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            print("🔔 iOS App: Notification settings:")
+            print("🔔 iOS App: - Authorization status: \(settings.authorizationStatus.rawValue)")
+            print("🔔 iOS App: - Alert setting: \(settings.alertSetting.rawValue)")
+            print("🔔 iOS App: - Sound setting: \(settings.soundSetting.rawValue)")
+            print("🔔 iOS App: - Badge setting: \(settings.badgeSetting.rawValue)")
+            print("🔔 iOS App: - Notification center setting: \(settings.notificationCenterSetting.rawValue)")
+            print("🔔 iOS App: - Lock screen setting: \(settings.lockScreenSetting.rawValue)")
+        }
+    }
+    
     private func checkForNewRunsAndNotify(_ newRuns: [ScheduledRun]) async {
         // Get the last known run count from UserDefaults
         let lastRunCount = UserDefaults.standard.integer(forKey: "lastRunCount")
         let currentRunCount = newRuns.count
         
+        print("🔔 iOS App: Checking for new runs...")
+        print("🔔 iOS App: Last run count: \(lastRunCount)")
+        print("🔔 iOS App: Current run count: \(currentRunCount)")
+        
         // If we have more runs than before, some are new
         if currentRunCount > lastRunCount {
             let newRunsCount = currentRunCount - lastRunCount
+            print("🔔 iOS App: Found \(newRunsCount) new runs!")
             
             // Show notification for new runs
             if newRunsCount == 1 {
                 if let newRun = newRuns.last {
+                    print("🔔 iOS App: Showing notification for new run: \(newRun.location)")
                     showNewRunNotification(for: newRun)
                 }
             } else {
+                print("🔔 iOS App: Showing notification for \(newRunsCount) new runs")
                 showMultipleRunsNotification(count: newRunsCount)
             }
             
             // Update the stored count
             UserDefaults.standard.set(currentRunCount, forKey: "lastRunCount")
+        } else {
+            print("🔔 iOS App: No new runs found")
         }
     }
     
     private func showNewRunNotification(for run: ScheduledRun) {
+        print("🔔 iOS App: Creating notification content for run: \(run.location)")
+        
         let content = UNMutableNotificationContent()
         content.title = "New Run Scheduled! 🏃‍♂️"
         content.body = "Run with Kam at \(run.location) on \(formatDate(run.date)) at \(run.time)"
@@ -292,6 +319,9 @@ class APIService: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
             content: content,
             trigger: nil
         )
+        
+        print("🔔 iOS App: Sending notification request for run: \(run.location)")
+        print("🔔 iOS App: Notification content: \(content.title) - \(content.body)")
         
         UNUserNotificationCenter.current().add(request) { error in
             if let error = error {
@@ -313,6 +343,7 @@ class APIService: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
         
         // Also show in-app alert for foreground notifications
         DispatchQueue.main.async {
+            print("🔔 iOS App: Posting in-app notification for \(run.location)")
             NotificationCenter.default.post(
                 name: .showInAppNotification,
                 object: run
@@ -410,6 +441,7 @@ class APIService: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
     
     // MARK: - UNUserNotificationCenterDelegate
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        print("🔔 iOS App: Will present notification: \(notification.request.identifier)")
         // Show notification even when app is in foreground
         completionHandler([.banner, .sound])
     }
@@ -421,6 +453,7 @@ class APIService: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
     }
     
     @objc private func appDidBecomeActive() {
+        print("🔔 iOS App: App became active")
         // Clear badge when app becomes active
         UNUserNotificationCenter.current().setBadgeCount(0) { error in
             if let error = error {
@@ -429,6 +462,38 @@ class APIService: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
                 print("🔔 iOS App: App became active, badge cleared successfully")
             }
         }
+    }
+    
+    // MARK: - Debug Methods
+    func debugNotificationSystem() {
+        print("🔔 iOS App: === NOTIFICATION SYSTEM DEBUG ===")
+        
+        // Check current notification settings
+        checkNotificationSettings()
+        
+        // Check if we're the delegate
+        let currentDelegate = UNUserNotificationCenter.current().delegate
+        print("🔔 iOS App: Current notification center delegate: \(String(describing: currentDelegate))")
+        print("🔔 iOS App: Our delegate reference: \(String(describing: self))")
+        print("🔔 iOS App: Are we the delegate? \(currentDelegate === self)")
+        
+        // Check pending notifications
+        UNUserNotificationCenter.current().getPendingNotificationRequests { requests in
+            print("🔔 iOS App: Pending notification requests: \(requests.count)")
+            for request in requests {
+                print("🔔 iOS App: - \(request.identifier): \(request.content.title)")
+            }
+        }
+        
+        // Check delivered notifications
+        UNUserNotificationCenter.current().getDeliveredNotifications { notifications in
+            print("🔔 iOS App: Delivered notifications: \(notifications.count)")
+            for notification in notifications {
+                print("🔔 iOS App: - \(notification.request.identifier): \(notification.request.content.title)")
+            }
+        }
+        
+        print("🔔 iOS App: === END DEBUG ===")
     }
 }
 
