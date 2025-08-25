@@ -3,9 +3,11 @@ import SwiftUI
 struct SignInView: View {
     @AppStorage("firstName") private var firstName: String = ""
     @AppStorage("lastName") private var lastName: String = ""
+    @AppStorage("username") private var username: String = ""
     
     @State private var firstNameInput: String = ""
     @State private var lastNameInput: String = ""
+    @State private var usernameInput: String = ""
     @State private var showingAlert = false
     @State private var alertMessage = ""
     
@@ -47,6 +49,15 @@ struct SignInView: View {
                             .autocapitalization(.words)
                             .accessibilityLabel("Last name text field")
                     }
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Username")
+                            .font(.headline)
+                            .foregroundColor(.primary)
+                        TextField("Choose a username", text: $usernameInput)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                            .autocapitalization(.none)
+                            .accessibilityLabel("Username text field")
+                    }
                 }
                 .padding(.horizontal, 40)
                 
@@ -78,6 +89,7 @@ struct SignInView: View {
     private func continueAction() {
         let trimmedFirstName = firstNameInput.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedLastName = lastNameInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedUsername = usernameInput.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         
         if trimmedFirstName.isEmpty {
             alertMessage = "Please enter your first name"
@@ -90,10 +102,29 @@ struct SignInView: View {
             showingAlert = true
             return
         }
+        if trimmedUsername.isEmpty {
+            alertMessage = "Please choose a username"
+            showingAlert = true
+            return
+        }
+        if !NSPredicate(format: "SELF MATCHES %@", "[a-z0-9_.-]{3,32}").evaluate(with: trimmedUsername) {
+            alertMessage = "Username must be 3-32 chars (letters, numbers, . _ -)"
+            showingAlert = true
+            return
+        }
         
-        // Save to UserDefaults
-        firstName = trimmedFirstName
-        lastName = trimmedLastName
+        Task {
+            do {
+                let user = try await APIService.shared.createAccount(firstName: trimmedFirstName, lastName: trimmedLastName, username: trimmedUsername)
+                // Save to UserDefaults
+                firstName = user.firstName
+                lastName = user.lastName
+                username = user.username ?? trimmedUsername
+            } catch {
+                alertMessage = (error as NSError).localizedDescription
+                showingAlert = true
+            }
+        }
     }
 }
 

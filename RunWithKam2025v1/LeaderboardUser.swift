@@ -5,6 +5,7 @@ struct LeaderboardUser: Codable, Identifiable {
     let id: String
     let firstName: String
     let lastName: String
+    let username: String?
     let totalRuns: Int
     let totalMiles: Double
     let rank: Int?

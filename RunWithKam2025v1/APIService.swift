@@ -32,6 +32,22 @@ class APIService: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
             object: nil
         )
     }
+    // MARK: - Accounts
+    struct CreateAccountRequest: Codable { let firstName: String; let lastName: String; let username: String }
+    struct CreateAccountResponse: Codable { let success: Bool; let data: LeaderboardUser }
+
+    func createAccount(firstName: String, lastName: String, username: String) async throws -> LeaderboardUser {
+        guard let url = URL(string: "\(baseURL)/users/create") else { throw APIError.invalidURL }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        let body = CreateAccountRequest(firstName: firstName, lastName: lastName, username: username)
+        request.httpBody = try JSONEncoder().encode(body)
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw APIError.serverError }
+        let decoded = try JSONDecoder().decode(CreateAccountResponse.self, from: data)
+        return decoded.data
+    }
     
     // MARK: - Fetch all runs
     func fetchRuns() async throws -> [ScheduledRun] {
