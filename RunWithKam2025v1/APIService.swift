@@ -129,6 +129,61 @@ class APIService: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
         return ce.data
     }
 
+    // MARK: - Update Leaderboard User (Profile)
+    struct UpdateLeaderboardRequest: Codable {
+        let firstName: String
+        let lastName: String
+        let totalRuns: Int
+        let totalMiles: Double
+        let appUserId: String?
+        let isRegistered: Bool
+        let photoUrl: String?
+        let bio: String?
+        let pace: String?
+        let favoritePier: String?
+    }
+
+    func updateLeaderboardUser(
+        userId: String,
+        firstName: String,
+        lastName: String,
+        totalRuns: Int,
+        totalMiles: Double,
+        appUserId: String?,
+        isRegistered: Bool,
+        photoUrl: String?,
+        bio: String?,
+        pace: String?,
+        favoritePier: String?
+    ) async throws -> LeaderboardUser {
+        guard let url = URL(string: "\(baseURL)/leaderboard/\(userId)") else { throw APIError.invalidURL }
+        var req = URLRequest(url: url)
+        req.httpMethod = "PUT"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        let body = UpdateLeaderboardRequest(
+            firstName: firstName,
+            lastName: lastName,
+            totalRuns: totalRuns,
+            totalMiles: totalMiles,
+            appUserId: appUserId,
+            isRegistered: isRegistered,
+            photoUrl: photoUrl,
+            bio: bio,
+            pace: pace,
+            favoritePier: favoritePier
+        )
+        req.httpBody = try JSONEncoder().encode(body)
+        let (data, response) = try await URLSession.shared.data(for: req)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw APIError.serverError }
+        do {
+            let env = try JSONDecoder().decode(LeaderboardResponse.self, from: data)
+            // Not the right envelope; fallback to direct decode of user from { success, data }
+        } catch { /* ignore */ }
+        struct UpdateEnvelope: Codable { let success: Bool; let data: LeaderboardUser }
+        let ue = try JSONDecoder().decode(UpdateEnvelope.self, from: data)
+        return ue.data
+    }
+
     struct RSVPRequest: Codable { let firstName: String; let lastName: String; let username: String?; let status: String }
     struct RSVPEntityEnvelope: Codable { let success: Bool; let data: RSVP }
 

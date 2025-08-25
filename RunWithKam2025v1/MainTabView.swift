@@ -28,6 +28,12 @@ struct MainTabView: View {
                         Image(systemName: "calendar")
                         Text("Running Calendar")
                     }
+
+                ProfileView()
+                    .tabItem {
+                        Image(systemName: "person.crop.circle")
+                        Text("Profile")
+                    }
             }
             .navigationBarHidden(true)
                             .accentColor(.blue)
