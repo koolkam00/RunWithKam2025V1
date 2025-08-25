@@ -213,8 +213,8 @@ class APIService: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
         
         let (data, response) = try await URLSession.shared.data(for: request)
         
-        guard let httpResponse = response as? HTTPURLResponse,
-              httpResponse.statusCode == 200 else {
+        if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode != 200 {
+            print("❌ iOS App: fetchRuns HTTP status: \(httpResponse.statusCode)")
             throw APIError.serverError
         }
         
@@ -370,7 +370,7 @@ class APIService: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
     // MARK: - Check for updates
     private func checkForUpdates() async {
         do {
-            let newRuns = try await fetchRuns()
+            let newRuns = try await fetchRunsWithRetry()
             
             // Check for new runs and show notifications
             await checkForNewRunsAndNotify(newRuns)
@@ -383,8 +383,27 @@ class APIService: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
                 )
             }
         } catch {
-            print("Failed to check for updates: \(error)")
+            print("Failed to check for updates after retries: \(error)")
         }
+    }
+
+    // MARK: - Retry wrapper for fetchRuns with simple backoff
+    private func fetchRunsWithRetry(retries: Int = 2, baseDelaySeconds: Double = 1.0) async throws -> [ScheduledRun] {
+        var lastError: Error?
+        for attempt in 0...retries {
+            do {
+                if attempt > 0 {
+                    let delay = baseDelaySeconds * pow(2.0, Double(attempt - 1))
+                    print("🔁 iOS App: Retry fetchRuns attempt #\(attempt) after \(delay)s")
+                    try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+                }
+                return try await fetchRuns()
+            } catch {
+                lastError = error
+                print("❌ iOS App: fetchRuns attempt #\(attempt) failed: \(error.localizedDescription)")
+            }
+        }
+        throw lastError ?? APIError.serverError
     }
     
     // MARK: - Notification Methods
