@@ -54,9 +54,9 @@ function createFormattedDate(daysFromNow, timeString = "06:00") {
     
         // Set time to the specified time exactly as specified
         // This ensures the date stays exactly as specified without timezone shifting
-        const year = date.getFullYear();
-        const month = date.getMonth();
-        const day = date.getDate();
+        const year = date.getUTCFullYear();
+        const month = date.getUTCMonth();
+        const day = date.getUTCDate();
         const userDate = new Date(year, month, day, timeHours, timeMinutes, 0, 0);
       
         return userDate.toISOString();
@@ -112,11 +112,23 @@ function normalizeExistingRunDates() {
     console.log('🔧 Normalizing existing run dates to ISO format...');
     runs.forEach(run => {
         try {
-            const parsedDate = new Date(run.date);
-            if (!isNaN(parsedDate.getTime())) {
-                const year = parsedDate.getFullYear();
-                const month = parsedDate.getMonth();
-                const day = parsedDate.getDate();
+            const dateInput = String(run.date);
+            let year, month, day;
+            const ymdMatch = dateInput.match(/^(\d{4})-(\d{2})-(\d{2})/);
+            if (ymdMatch) {
+                year = parseInt(ymdMatch[1], 10);
+                month = parseInt(ymdMatch[2], 10) - 1;
+                day = parseInt(ymdMatch[3], 10);
+            } else {
+                const parsedDate = new Date(dateInput);
+                if (!isNaN(parsedDate.getTime())) {
+                    year = parsedDate.getUTCFullYear();
+                    month = parsedDate.getUTCMonth();
+                    day = parsedDate.getUTCDate();
+                } else {
+                    return; // skip invalid
+                }
+            }
                 
                 // Parse the time to get hours and minutes
                 let timeHours = 0;
@@ -234,36 +246,40 @@ function validateAndNormalizeRunData(runData) {
     // Validate and normalize date format to ensure consistency
     let normalizedDate;
     try {
-        // Parse the date and convert to ISO string for consistency
-        const parsedDate = new Date(runData.date);
-        if (isNaN(parsedDate.getTime())) {
-            throw new Error('Invalid date format');
-        }
-        
+        const dateInput = String(runData.date).trim();
+
         // Parse the time to get hours and minutes
         let timeHours = 0;
         let timeMinutes = 0;
-        
         if (runData.time && runData.time.includes(':')) {
             const timeParts = runData.time.split(':');
             timeHours = parseInt(timeParts[0], 10);
             timeMinutes = parseInt(timeParts[1], 10);
         }
-        
-        // Store the date exactly as entered without timezone conversion
-        // When user enters "2025-09-25" and "08:00", we want it to show as September 25th at 8:00 AM
-        const year = parsedDate.getFullYear();
-        const month = parsedDate.getMonth();
-        const day = parsedDate.getDate();
-        
-        // Create the date exactly as specified by the user in local time
-        // This ensures the date stays exactly as entered without timezone shifting
+
+        // Extract date parts without timezone effects
+        let year, month, day;
+        const ymdMatch = dateInput.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (ymdMatch) {
+            year = parseInt(ymdMatch[1], 10);
+            month = parseInt(ymdMatch[2], 10) - 1; // zero-based
+            day = parseInt(ymdMatch[3], 10);
+        } else {
+            const parsedDate = new Date(dateInput);
+            if (isNaN(parsedDate.getTime())) {
+                throw new Error('Invalid date format');
+            }
+            // Use UTC getters to avoid local TZ shifting on pure dates
+            year = parsedDate.getUTCFullYear();
+            month = parsedDate.getUTCMonth();
+            day = parsedDate.getUTCDate();
+        }
+
+        // Build a local-time Date with the exact entered date/time
         const userDate = new Date(year, month, day, timeHours, timeMinutes, 0, 0);
-        
-        // Convert to ISO string but preserve the local date/time exactly as entered
         normalizedDate = userDate.toISOString();
-        
-        console.log(`📅 Date and time stored exactly as entered: ${runData.date} ${runData.time} -> ${normalizedDate}`);
+
+        console.log(`📅 Date stored (no TZ shift): ${dateInput} ${runData.time} -> ${normalizedDate}`);
     } catch (error) {
         throw new Error('Invalid date format. Please use YYYY-MM-DD format (e.g., 2025-08-27)');
     }
