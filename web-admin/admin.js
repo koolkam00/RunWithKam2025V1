@@ -39,6 +39,19 @@ function setupLogin() {
     if (loginBtn) {
         loginBtn.onclick = handleLoginClick;
     }
+    // Also support pressing Enter in either field
+    const u = document.getElementById('username');
+    const p = document.getElementById('password');
+    [u, p].forEach(el => {
+        if (el) {
+            el.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleLoginClick();
+                }
+            });
+        }
+    });
     // Allow quick access with URL flag ?autologin=1
     try {
         const params = new URLSearchParams(window.location.search);
@@ -56,17 +69,33 @@ function setupLogin() {
 }
 
 function handleLoginClick() {
-    const username = (document.getElementById('username') || {}).value || '';
-    const password = (document.getElementById('password') || {}).value || '';
-    const errorEl = document.getElementById('loginError');
-    // Simple local auth; can be replaced with API later
-    if (username === 'admin' && password === 'runwithkam2025') {
-        localStorage.setItem('adminLoggedIn', 'true');
-        if (errorEl) errorEl.classList.add('hidden');
-        showScreen('dashboardScreen');
-        initializeAdminPanel();
-    } else {
-        if (errorEl) errorEl.classList.remove('hidden');
+    try {
+        console.log('🔐 Login button clicked');
+        const btn = document.getElementById('loginButton');
+        if (btn) btn.disabled = true;
+        const username = (document.getElementById('username') || {}).value || '';
+        const password = (document.getElementById('password') || {}).value || '';
+        const errorEl = document.getElementById('loginError');
+        console.log('🔎 Credentials entered:', { hasUser: !!username, hasPass: !!password });
+        // Simple local auth; can be replaced with API later
+        if (username === 'admin' && password === 'runwithkam2025') {
+            localStorage.setItem('adminLoggedIn', 'true');
+            if (errorEl) errorEl.classList.add('hidden');
+            showScreen('dashboardScreen');
+            initializeAdminPanel();
+        } else {
+            if (errorEl) errorEl.classList.remove('hidden');
+        }
+    } catch (e) {
+        console.error('❌ Login error:', e);
+        const errorEl = document.getElementById('loginError');
+        if (errorEl) {
+            errorEl.textContent = 'An unexpected error occurred. Please try again.';
+            errorEl.classList.remove('hidden');
+        }
+    } finally {
+        const btn = document.getElementById('loginButton');
+        if (btn) btn.disabled = false;
     }
 }
 
