@@ -42,6 +42,17 @@ const ADMIN_CREDENTIALS = {
 
 // Initialize the app
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 DOM loaded, initializing app...');
+    
+    // Set up login button immediately
+    const loginButton = document.getElementById('loginButton');
+    if (loginButton) {
+        console.log('✅ Setting up login button listener immediately');
+        loginButton.addEventListener('click', handleLoginClick);
+    } else {
+        console.error('❌ Login button not found during immediate setup');
+    }
+    
     initializeApp();
 });
 
@@ -61,10 +72,14 @@ function initializeApp() {
 
 function setupEventListeners() {
     console.log('🔧 Setting up event listeners...');
-    // Login button click (instead of form submit)
-    const loginButton = document.querySelector('button[onclick="handleLoginClick()"]');
+    
+    // Login button click - use ID selector
+    const loginButton = document.getElementById('loginButton');
     if (loginButton) {
+        console.log('✅ Found login button, adding click listener');
         loginButton.addEventListener('click', handleLoginClick);
+    } else {
+        console.error('❌ Login button not found');
     }
     
     // Dashboard buttons
@@ -142,6 +157,7 @@ function setupEventListeners() {
 
 // Authentication functions
 function handleLoginClick() {
+    console.log('🔐 handleLoginClick function called!');
     try {
         console.log('🔐 Starting login process...');
         
