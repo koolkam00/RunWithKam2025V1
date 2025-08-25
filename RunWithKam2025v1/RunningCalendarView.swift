@@ -10,8 +10,6 @@ struct RunningCalendarView: View {
     @StateObject private var apiService = APIService.shared
     @State private var isLoading = false
     @State private var errorMessage: String?
-    @State private var showingInAppNotification = false
-    @State private var notificationMessage = ""
     
     var body: some View {
         NavigationView {
@@ -29,82 +27,9 @@ struct RunningCalendarView: View {
                 }
                 .padding(.top, 20)
                 
-                // Test Notification Button (for debugging)
-                HStack(spacing: 12) {
-                    Button(action: {
-                        apiService.testNotification()
-                    }) {
-                        HStack {
-                            Image(systemName: "bell.badge")
-                            Text("Test Notification")
-                        }
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(Color.orange)
-                        .cornerRadius(8)
-                    }
-                    
-                    Button(action: {
-                        checkForNewRuns()
-                    }) {
-                        HStack {
-                            Image(systemName: "arrow.clockwise")
-                            Text("Check for New Runs")
-                        }
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(Color.green)
-                        .cornerRadius(8)
-                    }
-                    
-                    Button(action: {
-                        apiService.debugNotificationSystem()
-                    }) {
-                        HStack {
-                            Image(systemName: "ladybug")
-                            Text("Debug Notifications")
-                        }
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(Color.purple)
-                        .cornerRadius(8)
-                    }
-                    
-                    Button(action: {
-                        apiService.resetRunCount()
-                    }) {
-                        HStack {
-                            Image(systemName: "arrow.counterclockwise")
-                            Text("Reset Run Count")
-                        }
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(Color.red)
-                        .cornerRadius(8)
-                    }
-                }
-                .padding(.bottom, 10)
+
                 
-                // In-app notification alert
-                if showingInAppNotification {
-                    HStack {
-                        Image(systemName: "bell.fill")
-                            .foregroundColor(.orange)
-                        Text(notificationMessage)
-                            .foregroundColor(.primary)
-                        Spacer()
-                    }
-                    .padding()
-                    .background(Color.orange.opacity(0.1))
-                    .cornerRadius(8)
-                    .padding(.horizontal)
-                    .transition(.move(edge: .top).combined(with: .opacity))
-                    .animation(.easeInOut(duration: 0.3), value: showingInAppNotification)
-                }
+
                 
                 // Calendar View
                 VStack(spacing: 15) {
@@ -221,9 +146,6 @@ struct RunningCalendarView: View {
                 loadRunsFromAPI()
                 // Start real-time updates
                 apiService.startRealTimeUpdates()
-                
-                // Setup notification handling
-                setupNotificationHandling()
                 
                 // Listen for real-time updates
                 NotificationCenter.default.addObserver(
@@ -553,50 +475,7 @@ struct ScheduledRun: Identifiable, Codable {
     }
 }
 
-// MARK: - Notification Handling
-extension RunningCalendarView {
-    private func setupNotificationHandling() {
-        // Listen for in-app notifications
-        NotificationCenter.default.addObserver(
-            forName: .showInAppNotification,
-            object: nil,
-            queue: .main
-        ) { notification in
-            if let run = notification.object as? ScheduledRun {
-                self.notificationMessage = "New run: \(run.location) on \(formatDate(run.date)) at \(run.time)"
-            } else {
-                self.notificationMessage = "Notification received!"
-            }
-            self.showingInAppNotification = true
-            
-            // Auto-hide after 3 seconds
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                self.showingInAppNotification = false
-            }
-        }
-    }
-    
-    private func formatDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .none
-        return formatter.string(from: date)
-    }
-    
-    func checkForNewRuns() {
-        Task {
-            do {
-                let newRuns = try await apiService.fetchRuns()
-                print("🔔 iOS App: Checked for new runs, found \(newRuns.count)")
-                
-                // The APIService will automatically show notifications for new runs
-                // This method is for manual checking
-            } catch {
-                print("❌ iOS App: Failed to check for new runs: \(error)")
-            }
-        }
-    }
-}
+
 
 
 
