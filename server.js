@@ -143,14 +143,22 @@ async function dbDeleteLeaderboardUser(userId) {
 }
 
 async function dbCreateOrUpdateRSVP(runId, entry) {
-    // If username present, replace existing username entry for this run
-    if (entry.username) {
-        await pool.query('DELETE FROM rsvps WHERE run_id=$1 AND LOWER(COALESCE(username, \'\')) = LOWER($2)', [runId, entry.username]);
+    // Replace any prior RSVP for this user on this run
+    if (entry.username && entry.username.trim() !== '') {
+        await pool.query(
+            'DELETE FROM rsvps WHERE run_id=$1 AND LOWER(COALESCE(username, '')) = LOWER($2)'
+            , [runId, entry.username]
+        );
+    } else {
+        await pool.query(
+            'DELETE FROM rsvps WHERE run_id=$1 AND username IS NULL AND LOWER(first_name)=LOWER($2) AND LOWER(last_name)=LOWER($3)'
+            , [runId, entry.firstName, entry.lastName]
+        );
     }
     await pool.query(
         `INSERT INTO rsvps (id, run_id, first_name, last_name, username, status, timestamp)
-         VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-        [entry.id, runId, entry.firstName, entry.lastName, entry.username, entry.status, entry.timestamp]
+         VALUES ($1,$2,$3,$4,$5,$6,$7)`
+        , [entry.id, runId, entry.firstName, entry.lastName, entry.username, entry.status, entry.timestamp]
     );
     return entry;
 }
