@@ -237,7 +237,9 @@ function initializeSampleData() {
             lastName: 'Smith',
             totalRuns: 15,
             totalMiles: 45.5,
-            lastUpdated: new Date().toISOString()
+            lastUpdated: new Date().toISOString(),
+            appUserId: 'sample-john',
+            isRegistered: true
         },
         {
             id: uuidv4(),
@@ -245,7 +247,9 @@ function initializeSampleData() {
             lastName: 'Johnson',
             totalRuns: 12,
             totalMiles: 38.2,
-            lastUpdated: new Date().toISOString()
+            lastUpdated: new Date().toISOString(),
+            appUserId: 'sample-sarah',
+            isRegistered: true
         },
         {
             id: uuidv4(),
@@ -253,7 +257,9 @@ function initializeSampleData() {
             lastName: 'Davis',
             totalRuns: 8,
             totalMiles: 25.0,
-            lastUpdated: new Date().toISOString()
+            lastUpdated: new Date().toISOString(),
+            appUserId: 'sample-mike',
+            isRegistered: true
         }
     ];
     
@@ -685,12 +691,54 @@ app.put('/api/notifications/:id/read', (req, res) => {
 });
 
 // Leaderboard API Endpoints
+// POST /api/users/register - Mark or create a leaderboard user as registered from the app
+app.post('/api/users/register', (req, res) => {
+    try {
+        const { appUserId, firstName, lastName } = req.body || {};
+        if (!appUserId) {
+            return res.status(400).json({ success: false, message: 'Missing appUserId' });
+        }
+
+        // Try to find by appUserId
+        let user = leaderboardUsers.find(u => u.appUserId === appUserId);
+        if (!user) {
+            user = {
+                id: uuidv4(),
+                firstName: (firstName || '').trim(),
+                lastName: (lastName || '').trim(),
+                totalRuns: 0,
+                totalMiles: 0,
+                lastUpdated: new Date().toISOString(),
+                appUserId,
+                isRegistered: true
+            };
+            leaderboardUsers.push(user);
+            console.log(`🆕 Registered new app user on leaderboard: ${user.firstName} ${user.lastName}`);
+        } else {
+            user.isRegistered = true;
+            user.firstName = (firstName || user.firstName).trim();
+            user.lastName = (lastName || user.lastName).trim();
+            user.lastUpdated = new Date().toISOString();
+            console.log(`✅ Marked existing leaderboard user as registered: ${user.firstName} ${user.lastName}`);
+        }
+
+        res.json({ success: true, data: user, message: 'User registered' });
+    } catch (error) {
+        console.error('❌ Error registering user:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
 
 // GET /api/leaderboard - Get all leaderboard users
 app.get('/api/leaderboard', (req, res) => {
     try {
+        const includeAll = req.query.includeAll === '1';
+        let list = [...leaderboardUsers];
+        if (!includeAll) {
+            list = list.filter(u => u.isRegistered === true);
+        }
         // Sort users by total miles (descending)
-        const sortedUsers = [...leaderboardUsers].sort((a, b) => b.totalMiles - a.totalMiles);
+        const sortedUsers = list.sort((a, b) => b.totalMiles - a.totalMiles);
         
         // Add rank to each user
         sortedUsers.forEach((user, index) => {
@@ -719,7 +767,7 @@ app.get('/api/leaderboard', (req, res) => {
 // POST /api/leaderboard - Create new leaderboard user
 app.post('/api/leaderboard', (req, res) => {
     try {
-        const { firstName, lastName, totalRuns, totalMiles } = req.body;
+        const { firstName, lastName, totalRuns, totalMiles, appUserId, isRegistered } = req.body;
         
         // Validate required fields
         if (!firstName || !lastName || totalRuns === undefined || totalMiles === undefined) {
@@ -737,7 +785,9 @@ app.post('/api/leaderboard', (req, res) => {
             lastName: lastName.trim(),
             totalRuns: parseInt(totalRuns) || 0,
             totalMiles: parseFloat(totalMiles) || 0,
-            lastUpdated: new Date().toISOString()
+            lastUpdated: new Date().toISOString(),
+            appUserId: appUserId || null,
+            isRegistered: !!isRegistered
         };
         
         leaderboardUsers.push(newUser);
@@ -766,7 +816,7 @@ app.post('/api/leaderboard', (req, res) => {
 app.put('/api/leaderboard/:id', (req, res) => {
     try {
         const userId = req.params.id;
-        const { firstName, lastName, totalRuns, totalMiles } = req.body;
+        const { firstName, lastName, totalRuns, totalMiles, appUserId, isRegistered } = req.body;
         
         const userIndex = leaderboardUsers.findIndex(u => u.id === userId);
         if (userIndex === -1) {
@@ -785,7 +835,9 @@ app.put('/api/leaderboard/:id', (req, res) => {
             lastName: lastName.trim(),
             totalRuns: parseInt(totalRuns) || 0,
             totalMiles: parseFloat(totalMiles) || 0,
-            lastUpdated: new Date().toISOString()
+            lastUpdated: new Date().toISOString(),
+            appUserId: appUserId !== undefined ? appUserId : leaderboardUsers[userIndex].appUserId,
+            isRegistered: typeof isRegistered === 'boolean' ? isRegistered : leaderboardUsers[userIndex].isRegistered
         };
         
         console.log(`🏆 Leaderboard user updated: ${leaderboardUsers[userIndex].firstName} ${leaderboardUsers[userIndex].lastName}`);
@@ -861,6 +913,7 @@ app.get('/api', (req, res) => {
                 runs: '/api/runs',
                 notifications: '/api/notifications',
                 leaderboard: '/api/leaderboard',
+                registerUser: '/api/users/register',
                 health: '/api/health'
             }
         },
@@ -939,6 +992,23 @@ function regenerateSampleData() {
     ];
     
     console.log('✅ Sample data regenerated with proper dates');
+}
+
+// Ensure leaderboard users have registration fields
+function ensureRegistrationFields() {
+    let updated = 0;
+    leaderboardUsers = leaderboardUsers.map(u => {
+        const withDefaults = {
+            ...u,
+            appUserId: u.appUserId || null,
+            isRegistered: typeof u.isRegistered === 'boolean' ? u.isRegistered : false,
+        };
+        if (withDefaults !== u) updated++;
+        return withDefaults;
+    });
+    if (updated > 0) {
+        console.log(`🔧 Backfilled registration fields on ${updated} leaderboard users`);
+    }
 }
 
 // Start server
