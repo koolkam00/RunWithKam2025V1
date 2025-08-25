@@ -183,7 +183,7 @@
                 </button>
             </div>
             
-            <form id="runForm" class="run-form">
+            <form id="runForm" class="run-form" onsubmit="handleRunSubmit(event)">
                 <div class="form-row">
                     <div class="input-group">
                         <label for="runDate">Date</label>
@@ -274,7 +274,7 @@
                 </button>
             </div>
             
-            <form id="leaderboardForm" class="leaderboard-form">
+            <form id="leaderboardForm" class="leaderboard-form" onsubmit="handleLeaderboardSubmit(event)">
                 <div class="form-row">
                     <div class="input-group">
                         <label for="userFirstName">First Name</label>
@@ -383,6 +383,177 @@
                 `);
             }
         }
+        
+        // Add Run Modal Functions
+        window.showAddRunModal = function() {
+            console.log('➕ Opening Add Run Modal');
+            document.getElementById('runModal').classList.remove('hidden');
+            document.getElementById('modalTitle').textContent = 'Add New Run';
+            // Set today's date as default
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('runDate').value = today;
+            document.getElementById('runTime').value = '08:00';
+        };
+        
+        window.hideRunModal = function() {
+            console.log('❌ Closing Run Modal');
+            document.getElementById('runModal').classList.add('hidden');
+            document.getElementById('runForm').reset();
+        };
+        
+        // Handle Run Form Submit
+        window.handleRunSubmit = function(event) {
+            event.preventDefault();
+            console.log('💾 Submitting run form...');
+            
+            const formData = new FormData(event.target);
+            const runData = {
+                date: formData.get('runDate'),
+                time: formData.get('runTime'),
+                location: formData.get('runLocation'),
+                pace: formData.get('runPace'),
+                description: formData.get('runDescription')
+            };
+            
+            console.log('📝 Run data:', runData);
+            
+            // Send to API
+            fetch('http://localhost:3000/api/runs', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(runData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log('✅ Run added successfully!');
+                    hideRunModal();
+                    loadBasicData(); // Reload data
+                    alert('Run added successfully!');
+                } else {
+                    console.error('❌ Failed to add run:', data.message);
+                    alert('Failed to add run: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('❌ Error adding run:', error);
+                alert('Error adding run: ' + error.message);
+            });
+        };
+        
+        // Calendar Navigation
+        window.navigateMonth = function(direction) {
+            console.log('📅 Navigating month:', direction);
+            const currentMonthElement = document.getElementById('currentMonth');
+            if (currentMonthElement) {
+                const currentText = currentMonthElement.textContent;
+                const [month, year] = currentText.split(' ');
+                const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                                   'July', 'August', 'September', 'October', 'November', 'December'];
+                let monthIndex = monthNames.indexOf(month);
+                let yearNum = parseInt(year);
+                
+                monthIndex += direction;
+                if (monthIndex < 0) {
+                    monthIndex = 11;
+                    yearNum--;
+                } else if (monthIndex > 11) {
+                    monthIndex = 0;
+                    yearNum++;
+                }
+                
+                currentMonthElement.textContent = `${monthNames[monthIndex]} ${yearNum}`;
+                console.log('✅ Month updated to:', currentMonthElement.textContent);
+            }
+        };
+        
+        // Refresh Functions
+        window.refreshData = function() {
+            console.log('🔄 Refreshing all data...');
+            loadBasicData();
+            alert('Data refreshed!');
+        };
+        
+        // Logout Function (just reloads the page)
+        window.handleLogout = function() {
+            console.log('🚪 Logging out...');
+            if (confirm('Are you sure you want to logout?')) {
+                location.reload();
+            }
+        };
+        
+        // Leaderboard Functions
+        window.showAddUserModal = function() {
+            console.log('👤 Opening Add User Modal');
+            document.getElementById('leaderboardModal').classList.remove('hidden');
+            document.getElementById('leaderboardModalTitle').textContent = 'Add New User';
+            document.getElementById('leaderboardForm').reset();
+        };
+        
+        window.hideLeaderboardModal = function() {
+            console.log('❌ Closing Leaderboard Modal');
+            document.getElementById('leaderboardModal').classList.add('hidden');
+            document.getElementById('leaderboardForm').reset();
+        };
+        
+        // Handle Leaderboard Form Submit
+        window.handleLeaderboardSubmit = function(event) {
+            event.preventDefault();
+            console.log('💾 Submitting leaderboard form...');
+            
+            const formData = new FormData(event.target);
+            const userData = {
+                firstName: formData.get('userFirstName'),
+                lastName: formData.get('userLastName'),
+                totalRuns: parseInt(formData.get('userTotalRuns')),
+                totalMiles: parseFloat(formData.get('userTotalMiles'))
+            };
+            
+            console.log('👤 User data:', userData);
+            
+            // Send to API
+            fetch('http://localhost:3000/api/leaderboard', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(userData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log('✅ User added successfully!');
+                    hideLeaderboardModal();
+                    loadBasicData(); // Reload data
+                    alert('User added successfully!');
+                } else {
+                    console.error('❌ Failed to add user:', data.message);
+                    alert('Failed to add user: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('❌ Error adding user:', error);
+                alert('Error adding user: ' + error.message);
+            });
+        };
+        
+        // Debug Function
+        window.debugDateConversion = function() {
+            console.log('🐛 Debug: Testing date conversion...');
+            const testDate = '2025-09-24';
+            const [year, month, day] = testDate.split('-').map(Number);
+            const utcDate = new Date(Date.UTC(year, month - 1, day, 5, 0, 0, 0));
+            
+            console.log('🧪 Test for 2025-09-24:');
+            console.log('Input:', testDate);
+            console.log('UTC Date:', utcDate.toISOString());
+            console.log('EST Display:', utcDate.toLocaleDateString('en-US', { timeZone: 'America/New_York' }));
+            console.log('Date object:', utcDate);
+            
+            alert('Check console for date conversion debug info!');
+        };
         
         console.log('✅ All functions loaded!');
     </script>
