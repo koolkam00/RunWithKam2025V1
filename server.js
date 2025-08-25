@@ -773,7 +773,7 @@ app.post('/api/runs/:id/rsvp', async (req, res) => {
     }
 });
 // POST /api/users/create - Create account with firstName, lastName, username
-app.post('/api/users/create', (req, res) => {
+app.post('/api/users/create', async (req, res) => {
     try {
         const { firstName, lastName, username } = req.body || {};
         if (!firstName || !lastName || !username) {
@@ -783,8 +783,14 @@ app.post('/api/users/create', (req, res) => {
         // Username: allow letters, numbers, underscore, dot, hyphen; 3-32 chars
         const unameOk = /^[a-z0-9_.-]{3,32}$/.test(uname);
         if (!unameOk) return res.status(400).json({ success: false, message: 'Invalid username format' });
-        if (leaderboardUsers.some(u => (u.username || '').toLowerCase() === uname)) {
-            return res.status(409).json({ success: false, message: 'Username already taken' });
+        if (USE_DB) {
+            // Ensure uniqueness at DB level
+            const exists = await pool.query('SELECT 1 FROM leaderboard_users WHERE LOWER(username)=LOWER($1) LIMIT 1', [uname]);
+            if (exists.rowCount > 0) return res.status(409).json({ success: false, message: 'Username already taken' });
+        } else {
+            if (leaderboardUsers.some(u => (u.username || '').toLowerCase() === uname)) {
+                return res.status(409).json({ success: false, message: 'Username already taken' });
+            }
         }
         const user = {
             id: uuidv4(),
@@ -797,9 +803,13 @@ app.post('/api/users/create', (req, res) => {
             appUserId: null,
             isRegistered: true
         };
-        leaderboardUsers.push(user);
+        if (USE_DB) {
+            await dbCreateLeaderboardUser(user);
+        } else {
+            leaderboardUsers.push(user);
+        }
         console.log(`👤 Account created: ${user.firstName} ${user.lastName} (@${user.username})`);
-        res.status(201).json({ success: true, data: user, message: 'Account created' });
+        res.status(201).json({ success: true, data: user, message: 'Account created and added to leaderboard' });
     } catch (error) {
         console.error('❌ Error creating account:', error);
         res.status(500).json({ success: false, message: error.message || 'Internal error' });
