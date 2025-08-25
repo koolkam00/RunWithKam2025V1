@@ -306,8 +306,8 @@ function loadBasicData() {
             updateSyncStatus('error', 'runs');
         });
     
-    // Load leaderboard
-    fetch(`${API_BASE}/leaderboard`)
+    // Load leaderboard (include all users so admin can manage unregistered too)
+    fetch(`${API_BASE}/leaderboard?includeAll=1`)
         .then(response => {
             console.log('📡 Leaderboard API response status:', response.status);
             if (!response.ok) {
@@ -755,7 +755,8 @@ function handleLeaderboardSubmit(event) {
             firstName: formData.get('userFirstName'),
             lastName: formData.get('userLastName'),
             totalRuns: parseInt(formData.get('userTotalRuns')),
-            totalMiles: parseFloat(formData.get('userTotalMiles'))
+            totalMiles: parseFloat(formData.get('userTotalMiles')),
+            isRegistered: true
         };
         
         console.log('👤 User data to submit:', userData);
