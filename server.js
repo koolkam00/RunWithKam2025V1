@@ -116,6 +116,8 @@ let notifications = [];
 
 // In-memory leaderboard storage (replace with database in production)
 let leaderboardUsers = [];
+// In-memory RSVPs per runId
+let runRsvps = {}; // { [runId]: [{ id, runId, firstName, lastName, username, status, timestamp }] }
 
 // Helper function to send notifications to all users
 function sendRunNotification(run) {
@@ -461,11 +463,11 @@ app.get('/api/runs/:id', (req, res) => {
                 message: 'Run not found'
             });
         }
-        
+        const rsvps = runRsvps[run.id] || [];
         res.json({
             success: true,
-            data: run,
-            count: 1,
+            data: { ...run, rsvps },
+            count: rsvps.length,
             message: 'Run retrieved successfully'
         });
     } catch (error) {
@@ -694,6 +696,43 @@ app.put('/api/notifications/:id/read', (req, res) => {
 });
 
 // Leaderboard API Endpoints
+// POST /api/runs/:id/rsvp - Create or update RSVP for a run
+app.post('/api/runs/:id/rsvp', (req, res) => {
+    try {
+        const runId = req.params.id;
+        const run = findRunById(runId);
+        if (!run) return res.status(404).json({ success: false, message: 'Run not found' });
+        const { firstName, lastName, username, status } = req.body || {};
+        if (!firstName || !lastName || !status || !['yes','no'].includes(String(status).toLowerCase())) {
+            return res.status(400).json({ success: false, message: 'Missing firstName/lastName/status or invalid status' });
+        }
+        const uname = username ? String(username).toLowerCase() : null;
+        const entry = {
+            id: uuidv4(),
+            runId,
+            firstName: String(firstName).trim(),
+            lastName: String(lastName).trim(),
+            username: uname,
+            status: String(status).toLowerCase(),
+            timestamp: new Date().toISOString()
+        };
+        const list = runRsvps[runId] || [];
+        // Replace existing RSVP from same username if present
+        let updated = false;
+        if (uname) {
+            for (let i = 0; i < list.length; i++) {
+                if ((list[i].username || '').toLowerCase() === uname) {
+                    list[i] = entry; updated = true; break;
+                }
+            }
+        }
+        if (!updated) list.push(entry);
+        runRsvps[runId] = list;
+        res.status(201).json({ success: true, data: entry, count: 1, message: 'RSVP saved' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
 // POST /api/users/create - Create account with firstName, lastName, username
 app.post('/api/users/create', (req, res) => {
     try {
