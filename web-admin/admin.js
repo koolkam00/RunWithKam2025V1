@@ -26,6 +26,16 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     setupLogin();
+    // Fallback click delegation for login button in case direct handler fails
+    document.addEventListener('click', (e) => {
+        const t = e.target;
+        if (!t) return;
+        const id = (t.id || (t.closest && t.closest('#loginButton') && 'loginButton'));
+        if (id === 'loginButton') {
+            e.preventDefault();
+            handleLoginClick();
+        }
+    });
 });
 function showScreen(idToShow) {
     const screens = document.querySelectorAll('.screen');
