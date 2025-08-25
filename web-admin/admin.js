@@ -5,6 +5,24 @@ let currentLeaderboard = [];
 // Initialize the admin panel
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🚀 Admin panel DOM loaded - initializing...');
+    console.log('🔍 Checking for required DOM elements...');
+    
+    // Verify all required elements exist
+    const requiredElements = [
+        'addRunBtn', 'refreshBtn', 'debugBtn', 'logoutBtn',
+        'prevMonth', 'nextMonth', 'addUserBtn', 'refreshLeaderboardBtn',
+        'runModal', 'leaderboardModal', 'runsList', 'leaderboardContainer'
+    ];
+    
+    requiredElements.forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            console.log(`✅ Found element: ${id}`);
+        } else {
+            console.warn(`⚠️ Missing element: ${id}`);
+        }
+    });
+    
     initializeAdminPanel();
 });
 
@@ -164,12 +182,18 @@ function loadBasicData() {
     
     // Load runs
     fetch('http://localhost:3000/api/runs')
-        .then(response => response.json())
+        .then(response => {
+            console.log('📡 Runs API response status:', response.status);
+            return response.json();
+        })
         .then(data => {
             console.log('✅ Runs loaded:', data);
             if (data.success) {
                 currentRuns = data.data;
                 displayRuns(data.data);
+                console.log(`📊 Displayed ${data.data.length} runs`);
+            } else {
+                console.error('❌ Runs API returned success: false');
             }
         })
         .catch(error => {
@@ -178,12 +202,18 @@ function loadBasicData() {
     
     // Load leaderboard
     fetch('http://localhost:3000/api/leaderboard')
-        .then(response => response.json())
+        .then(response => {
+            console.log('📡 Leaderboard API response status:', response.status);
+            return response.json();
+        })
         .then(data => {
             console.log('✅ Leaderboard loaded:', data);
             if (data.success) {
                 currentLeaderboard = data.data;
                 displayLeaderboard(data.data);
+                console.log(`📊 Displayed ${data.data.length} leaderboard users`);
+            } else {
+                console.error('❌ Leaderboard API returned success: false');
             }
         })
         .catch(error => {
@@ -193,6 +223,7 @@ function loadBasicData() {
 
 // Display runs
 function displayRuns(runs) {
+    console.log('🎨 Displaying runs:', runs);
     const runsList = document.getElementById('runsList');
     if (runsList && runs.length > 0) {
         runsList.innerHTML = runs.map(run => `
@@ -202,13 +233,18 @@ function displayRuns(runs) {
                 Pace: ${run.pace}
             </div>
         `).join('');
+        console.log(`✅ Displayed ${runs.length} runs in the UI`);
     } else if (runsList) {
         runsList.innerHTML = '<p>No runs scheduled yet.</p>';
+        console.log('ℹ️ No runs to display');
+    } else {
+        console.warn('⚠️ Runs list element not found');
     }
 }
 
 // Display leaderboard
 function displayLeaderboard(users) {
+    console.log('🎨 Displaying leaderboard:', users);
     const leaderboardContainer = document.getElementById('leaderboardContainer');
     if (leaderboardContainer && users.length > 0) {
         leaderboardContainer.innerHTML = users.map(user => `
@@ -217,8 +253,12 @@ function displayLeaderboard(users) {
                 Runs: ${user.totalRuns} | Miles: ${user.totalMiles}
             </div>
         `).join('');
+        console.log(`✅ Displayed ${users.length} leaderboard users in the UI`);
     } else if (leaderboardContainer) {
         leaderboardContainer.innerHTML = '<p>No users in leaderboard yet.</p>';
+        console.log('ℹ️ No leaderboard users to display');
+    } else {
+        console.warn('⚠️ Leaderboard container element not found');
     }
 }
 
@@ -283,7 +323,7 @@ function handleRunSubmit(event) {
             description: formData.get('runDescription')
         };
         
-        console.log('📝 Run data:', runData);
+        console.log('📝 Run data to submit:', runData);
         
         // Send to API
         fetch('http://localhost:3000/api/runs', {
@@ -293,7 +333,10 @@ function handleRunSubmit(event) {
             },
             body: JSON.stringify(runData)
         })
-        .then(response => response.json())
+        .then(response => {
+            console.log('📡 Create run API response status:', response.status);
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
                 console.log('✅ Run added successfully!');
@@ -426,7 +469,7 @@ function handleLeaderboardSubmit(event) {
             totalMiles: parseFloat(formData.get('userTotalMiles'))
         };
         
-        console.log('👤 User data:', userData);
+        console.log('👤 User data to submit:', userData);
         
         // Send to API
         fetch('http://localhost:3000/api/leaderboard', {
@@ -436,7 +479,10 @@ function handleLeaderboardSubmit(event) {
             },
             body: JSON.stringify(userData)
         })
-        .then(response => response.json())
+        .then(response => {
+            console.log('📡 Create user API response status:', response.status);
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
                 console.log('✅ User added successfully!');
@@ -484,7 +530,18 @@ window.testAdminPanel = function() {
     console.log('🧪 Testing admin panel functions...');
     console.log('Current runs:', currentRuns);
     console.log('Current leaderboard:', currentLeaderboard);
+    console.log('DOM elements check:');
+    console.log('- Add Run button:', document.getElementById('addRunBtn'));
+    console.log('- Refresh button:', document.getElementById('refreshBtn'));
+    console.log('- Runs list:', document.getElementById('runsList'));
+    console.log('- Leaderboard container:', document.getElementById('leaderboardContainer'));
     alert('Check console for admin panel test info!');
 };
+
+// Auto-refresh data every 30 seconds to keep in sync
+setInterval(() => {
+    console.log('🔄 Auto-refreshing data...');
+    loadBasicData();
+}, 30000);
 
 console.log('✅ All functions loaded and ready!');
