@@ -287,6 +287,7 @@ struct RunCardView: View {
     @State private var error: String?
     @State private var hasResponded = false
     @State private var myStatus: String? = nil
+    @State private var showChangeUI = false
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -318,7 +319,7 @@ struct RunCardView: View {
             }
 
             // RSVP actions
-            if !hasResponded {
+            if !hasResponded || showChangeUI {
                 HStack(spacing: 10) {
                     Button(action: { submitRSVP(status: "yes") }) {
                         Text("Coming")
@@ -349,6 +350,15 @@ struct RunCardView: View {
                         Text("You marked Not Coming")
                             .font(.caption2)
                             .foregroundColor(.secondary)
+                    }
+                    if hasResponded && !showChangeUI {
+                        Button(action: { showChangeUI = true }) {
+                            Text("Change RSVP")
+                        }
+                        .buttonStyle(.borderless)
+                        .font(.caption)
+                        .foregroundColor(.blue)
+                        .padding(.top, 2)
                     }
                 }
             }
@@ -410,6 +420,7 @@ struct RunCardView: View {
                 }
                 _ = try await APIService.shared.sendRSVP(runId: run.id, firstName: firstName, lastName: lastName, username: username.isEmpty ? nil : username, status: status)
                 await loadRunDetail()
+                await MainActor.run { showChangeUI = false }
             } catch {
                 await MainActor.run { self.error = error.localizedDescription }
             }
