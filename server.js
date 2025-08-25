@@ -52,12 +52,12 @@ function createFormattedDate(daysFromNow, timeString = "06:00") {
         timeMinutes = parseInt(timeParts[1], 10);
     }
     
-            // Set time to the specified time in Eastern Time by subtracting 5 hours from UTC to get to EST
-        // This ensures the date stays on the same day
+            // Set time to the specified time in Eastern Standard Time
+        // This ensures the date stays exactly as specified
         const year = date.getFullYear();
         const month = date.getMonth();
         const day = date.getDate();
-        const easternDate = new Date(Date.UTC(year, month, day, timeHours - 5, timeMinutes, 0, 0));
+        const easternDate = new Date(Date.UTC(year, month, day, timeHours + 5, timeMinutes, 0, 0));
     
     return easternDate.toISOString();
 }
@@ -128,9 +128,10 @@ function normalizeExistingRunDates() {
                     timeMinutes = parseInt(timeParts[1], 10);
                 }
                 
-                // Create date in Eastern Time by subtracting 5 hours from UTC to get to EST
-                // This ensures the date stays on the same day the user entered
-                const easternDate = new Date(Date.UTC(year, month, day, timeHours - 5, timeMinutes, 0, 0));
+                // Store the date exactly as entered in Eastern Standard Time
+                // This ensures the date stays exactly as entered
+                const easternDate = new Date(Date.UTC(year, month, day, timeHours + 5, timeMinutes, 0, 0));
+                
                 const isoDate = easternDate.toISOString();
                 
                 if (run.date !== isoDate) {
@@ -249,18 +250,19 @@ function validateAndNormalizeRunData(runData) {
             timeMinutes = parseInt(timeParts[1], 10);
         }
         
-        // Convert to Eastern Time by combining date and time
+        // Store the date exactly as entered in Eastern Standard Time
         // When user enters "2025-09-25" and "08:00", we want it to show as September 25th at 8:00 AM EST
         const year = parsedDate.getFullYear();
         const month = parsedDate.getMonth();
         const day = parsedDate.getDate();
         
-        // Create date in Eastern Time by subtracting 5 hours from UTC to get to EST
-        // This ensures the date stays on the same day the user entered
-        const easternDate = new Date(Date.UTC(year, month, day, timeHours - 5, timeMinutes, 0, 0));
+        // Create the date in Eastern Time by using UTC with EST offset (UTC-5)
+        // This ensures the date stays exactly as entered
+        const easternDate = new Date(Date.UTC(year, month, day, timeHours + 5, timeMinutes, 0, 0));
+        
         normalizedDate = easternDate.toISOString();
         
-        console.log(`📅 Date and time normalized to Eastern Time: ${runData.date} ${runData.time} -> ${normalizedDate}`);
+        console.log(`📅 Date and time stored in Eastern Time: ${runData.date} ${runData.time} -> ${normalizedDate}`);
     } catch (error) {
         throw new Error('Invalid date format. Please use YYYY-MM-DD format (e.g., 2025-08-27)');
     }
