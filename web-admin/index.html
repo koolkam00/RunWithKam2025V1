@@ -118,17 +118,31 @@
     </style>
 </head>
 <body>
-    <!-- Welcome Header -->
-    <div class="welcome-header">
-        <div class="logo">
-            <i class="fas fa-running"></i>
-            <h1>Run With Kam</h1>
+    <!-- Login Screen -->
+    <div id="loginScreen" class="screen active login-container">
+        <div class="login-header">
+            <div class="logo">
+                <i class="fas fa-running"></i>
+                <h1>Run With Kam</h1>
+            </div>
+            <p>Admin Panel</p>
         </div>
-        <p>Admin Panel - Direct Access</p>
+        <form id="loginForm" class="login-form" onsubmit="return false;">
+            <div class="input-group">
+                <label for="username">Username</label>
+                <input id="username" type="text" placeholder="admin" autocomplete="username" required>
+            </div>
+            <div class="input-group">
+                <label for="password">Password</label>
+                <input id="password" type="password" placeholder="••••••••" autocomplete="current-password" required>
+            </div>
+            <div id="loginError" class="error-message hidden">Invalid credentials. Try again.</div>
+            <button id="loginButton" type="button" class="btn btn-primary">Sign In</button>
+        </form>
     </div>
 
     <!-- Main Admin Dashboard -->
-    <div id="dashboardScreen">
+    <div id="dashboardScreen" class="screen">
         <header class="dashboard-header">
             <div class="header-left">
                 <h1><i class="fas fa-running"></i> Run With Kam Admin</h1>

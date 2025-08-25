@@ -25,8 +25,44 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    initializeAdminPanel();
+    setupLogin();
 });
+function showScreen(idToShow) {
+    const screens = document.querySelectorAll('.screen');
+    screens.forEach(s => s.classList.remove('active'));
+    const el = document.getElementById(idToShow);
+    if (el) el.classList.add('active');
+}
+
+function setupLogin() {
+    const loginBtn = document.getElementById('loginButton');
+    if (loginBtn) {
+        loginBtn.onclick = handleLoginClick;
+    }
+    const isLoggedIn = localStorage.getItem('adminLoggedIn') === 'true';
+    if (isLoggedIn) {
+        showScreen('dashboardScreen');
+        initializeAdminPanel();
+    } else {
+        showScreen('loginScreen');
+    }
+}
+
+function handleLoginClick() {
+    const username = (document.getElementById('username') || {}).value || '';
+    const password = (document.getElementById('password') || {}).value || '';
+    const errorEl = document.getElementById('loginError');
+    // Simple local auth; can be replaced with API later
+    if (username === 'admin' && password === 'runwithkam2025') {
+        localStorage.setItem('adminLoggedIn', 'true');
+        if (errorEl) errorEl.classList.add('hidden');
+        showScreen('dashboardScreen');
+        initializeAdminPanel();
+    } else {
+        if (errorEl) errorEl.classList.remove('hidden');
+    }
+}
+
 
 // Main initialization function
 function initializeAdminPanel() {
@@ -259,12 +295,23 @@ function displayRuns(runs) {
     const runsList = document.getElementById('runsList');
     if (runsList && runs.length > 0) {
         runsList.innerHTML = runs.map(run => `
-            <div style="border: 1px solid #ccc; padding: 10px; margin: 5px; border-radius: 5px;">
-                <strong>${run.location}</strong> - ${run.time}<br>
-                Date: ${new Date(run.date).toLocaleDateString('en-US')} at ${run.time}<br>
-                Pace: ${run.pace}
+            <div class="run-card">
+                <div class="run-card-header">
+                    <div class="run-time">${run.time}</div>
+                    <div class="run-actions">
+                        <button class="btn btn-secondary btn-sm" data-action="edit-run" data-id="${run.id}"><i class="fas fa-edit"></i> Edit</button>
+                        <button class="btn btn-danger btn-sm" data-action="delete-run" data-id="${run.id}"><i class="fas fa-trash"></i> Delete</button>
+                    </div>
+                </div>
+                <div class="run-location">${run.location}</div>
+                <div>📅 ${new Date(run.date).toLocaleDateString('en-US')} at ${run.time}</div>
+                <div class="run-pace">${run.pace}</div>
+                ${run.description ? `<div class="run-description">${run.description}</div>` : ''}
             </div>
         `).join('');
+        // Hook up action buttons
+        runsList.querySelectorAll('[data-action="edit-run"]').forEach(btn => btn.addEventListener('click', () => openEditRun(btn.getAttribute('data-id'))));
+        runsList.querySelectorAll('[data-action="delete-run"]').forEach(btn => btn.addEventListener('click', () => openDeleteRun(btn.getAttribute('data-id'))));
         console.log(`✅ Displayed ${runs.length} runs in the UI`);
     } else if (runsList) {
         runsList.innerHTML = '<p>No runs scheduled yet.</p>';
@@ -280,11 +327,26 @@ function displayLeaderboard(users) {
     const leaderboardContainer = document.getElementById('leaderboardContainer');
     if (leaderboardContainer && users.length > 0) {
         leaderboardContainer.innerHTML = users.map(user => `
-            <div style="border: 1px solid #ccc; padding: 10px; margin: 5px; border-radius: 5px;">
-                <strong>${user.firstName} ${user.lastName}</strong><br>
-                Runs: ${user.totalRuns} | Miles: ${user.totalMiles}
+            <div class="leaderboard-item">
+                <div class="leaderboard-rank">
+                    <div class="rank-number ${user.rank === 1 ? 'rank-1' : user.rank === 2 ? 'rank-2' : user.rank === 3 ? 'rank-3' : 'rank-other'}">${user.rank}</div>
+                    <div class="user-info">
+                        <div class="user-name">${user.firstName} ${user.lastName}</div>
+                        <div class="user-stats">
+                            <span><i class="fas fa-running"></i> ${user.totalRuns} runs</span>
+                            <span><i class="fas fa-route"></i> ${user.totalMiles} miles</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="leaderboard-actions">
+                    <button class="btn-edit" data-action="edit-user" data-id="${user.id}"><i class="fas fa-edit"></i> Edit</button>
+                    <button class="btn-delete" data-action="delete-user" data-id="${user.id}"><i class="fas fa-trash"></i> Delete</button>
+                </div>
             </div>
         `).join('');
+        // Hook up action buttons
+        leaderboardContainer.querySelectorAll('[data-action="edit-user"]').forEach(btn => btn.addEventListener('click', () => openEditUser(btn.getAttribute('data-id'))));
+        leaderboardContainer.querySelectorAll('[data-action="delete-user"]').forEach(btn => btn.addEventListener('click', () => deleteUser(btn.getAttribute('data-id'))));
         console.log(`✅ Displayed ${users.length} leaderboard users in the UI`);
     } else if (leaderboardContainer) {
         leaderboardContainer.innerHTML = '<p>No users in leaderboard yet.</p>';
@@ -319,6 +381,51 @@ function showAddRunModal() {
     } catch (error) {
         console.error('❌ Error opening Add Run modal:', error);
     }
+}
+
+function openEditRun(runId) {
+    const run = currentRuns.find(r => r.id === runId);
+    if (!run) return;
+    const modal = document.getElementById('runModal');
+    const modalTitle = document.getElementById('modalTitle');
+    const runDate = document.getElementById('runDate');
+    const runTime = document.getElementById('runTime');
+    const runLocation = document.getElementById('runLocation');
+    const runPace = document.getElementById('runPace');
+    const runDescription = document.getElementById('runDescription');
+    modal.classList.remove('hidden');
+    modalTitle.textContent = 'Edit Run';
+    // Pre-fill
+    runDate.value = new Date(run.date).toISOString().slice(0,10);
+    runTime.value = run.time;
+    runLocation.value = run.location;
+    runPace.value = run.pace;
+    runDescription.value = run.description || '';
+    // Attach runId to form for update
+    document.getElementById('runForm').setAttribute('data-run-id', runId);
+}
+
+function openDeleteRun(runId) {
+    const run = currentRuns.find(r => r.id === runId);
+    if (!run) return;
+    const modal = document.getElementById('deleteModal');
+    const details = document.getElementById('deleteRunDetails');
+    details.textContent = `${new Date(run.date).toLocaleDateString('en-US')} ${run.time} - ${run.location}`;
+    modal.classList.remove('hidden');
+    const confirmBtn = document.getElementById('confirmDelete');
+    const cancelBtn = document.getElementById('cancelDelete');
+    const closeBtn = document.getElementById('closeDeleteModal');
+    const cleanup = () => {
+        modal.classList.add('hidden');
+        confirmBtn.onclick = null; cancelBtn.onclick = null; closeBtn.onclick = null;
+    };
+    confirmBtn.onclick = () => {
+        fetch(`http://localhost:3000/api/runs/${runId}`, { method: 'DELETE' })
+          .then(r => { if (!r.ok) throw new Error('Delete failed'); return r.json(); })
+          .then(() => { cleanup(); loadBasicData(); })
+          .catch(err => { console.error(err); alert('Failed to delete run'); });
+    };
+    cancelBtn.onclick = cleanup; closeBtn.onclick = cleanup;
 }
 
 function hideRunModal() {
@@ -356,13 +463,14 @@ function handleRunSubmit(event) {
         };
         
         console.log('📝 Run data to submit:', runData);
-        
+        const runId = event.target.getAttribute('data-run-id');
+        const isUpdate = !!runId;
+        const url = isUpdate ? `http://localhost:3000/api/runs/${runId}` : 'http://localhost:3000/api/runs';
+        const method = isUpdate ? 'PUT' : 'POST';
         // Send to API
-        fetch('http://localhost:3000/api/runs', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+        fetch(url, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(runData)
         })
         .then(response => {
@@ -376,8 +484,9 @@ function handleRunSubmit(event) {
             if (data.success) {
                 console.log('✅ Run added successfully!');
                 hideRunModal();
+                event.target.removeAttribute('data-run-id');
                 loadBasicData(); // Reload data
-                alert('Run added successfully!');
+                alert(isUpdate ? 'Run updated successfully!' : 'Run added successfully!');
             } else {
                 console.error('❌ Failed to add run:', data.message);
                 alert('Failed to add run: ' + data.message);
@@ -442,7 +551,8 @@ function handleLogout() {
     console.log('🚪 Logging out...');
     try {
         if (confirm('Are you sure you want to logout?')) {
-            location.reload();
+            localStorage.removeItem('adminLoggedIn');
+            showScreen('loginScreen');
         }
     } catch (error) {
         console.error('❌ Error in logout:', error);
@@ -469,6 +579,27 @@ function showAddUserModal() {
     } catch (error) {
         console.error('❌ Error opening Add User modal:', error);
     }
+}
+
+function openEditUser(userId) {
+    const user = currentLeaderboard.find(u => u.id === userId);
+    if (!user) return;
+    const modal = document.getElementById('leaderboardModal');
+    document.getElementById('leaderboardModalTitle').textContent = 'Edit User';
+    document.getElementById('userFirstName').value = user.firstName;
+    document.getElementById('userLastName').value = user.lastName;
+    document.getElementById('userTotalRuns').value = user.totalRuns;
+    document.getElementById('userTotalMiles').value = user.totalMiles;
+    document.getElementById('leaderboardForm').setAttribute('data-user-id', userId);
+    modal.classList.remove('hidden');
+}
+
+function deleteUser(userId) {
+    if (!confirm('Delete this user?')) return;
+    fetch(`http://localhost:3000/api/leaderboard/${userId}`, { method: 'DELETE' })
+      .then(r => { if (!r.ok) throw new Error('Delete failed'); return r.json(); })
+      .then(() => { loadBasicData(); })
+      .catch(err => { console.error(err); alert('Failed to delete user'); });
 }
 
 function hideLeaderboardModal() {
@@ -506,12 +637,14 @@ function handleLeaderboardSubmit(event) {
         
         console.log('👤 User data to submit:', userData);
         
+        const userId = event.target.getAttribute('data-user-id');
+        const isUpdate = !!userId;
+        const url = isUpdate ? `http://localhost:3000/api/leaderboard/${userId}` : 'http://localhost:3000/api/leaderboard';
+        const method = isUpdate ? 'PUT' : 'POST';
         // Send to API
-        fetch('http://localhost:3000/api/leaderboard', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+        fetch(url, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(userData)
         })
         .then(response => {
@@ -525,8 +658,9 @@ function handleLeaderboardSubmit(event) {
             if (data.success) {
                 console.log('✅ User added successfully!');
                 hideLeaderboardModal();
+                event.target.removeAttribute('data-user-id');
                 loadBasicData(); // Reload data
-                alert('User added successfully!');
+                alert(isUpdate ? 'User updated successfully!' : 'User added successfully!');
             } else {
                 console.error('❌ Failed to add user:', data.message);
                 alert('Failed to add user: ' + data.message);
