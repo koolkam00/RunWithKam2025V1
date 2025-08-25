@@ -80,6 +80,11 @@ async function dbCreateRun(newRun) {
     return newRun;
 }
 
+async function dbCountRuns() {
+    const { rows } = await pool.query('SELECT COUNT(*)::int AS count FROM runs');
+    return rows[0].count;
+}
+
 async function dbUpdateRun(updatedRun) {
     await pool.query(
         'UPDATE runs SET date_iso=$2, time=$3, location=$4, pace=$5, description=$6 WHERE id=$1',
@@ -1024,34 +1029,33 @@ function ensureRegistrationFields() {
 }
 
 // Start server
-app.listen(PORT, () => {
-    // Clean up any invalid IDs first
-    cleanupInvalidIDs();
-    
-    // Initialize sample data with notifications
-    initializeSampleData();
-    
-    // Normalize any existing run dates to ISO format
-    normalizeExistingRunDates();
-    
-    console.log(`🚀 Run With Kam API server running on port ${PORT}`);
-    console.log(`📱 iOS app can connect to: http://localhost:${PORT}/api`);
-    console.log(`🌐 Web admin can connect to: http://localhost:${PORT}/api`);
-    console.log(`🔍 Health check: http://localhost:${PORT}/api/health`);
-    console.log(`📊 Total runs loaded: ${runs.length}`);
-    console.log(`🔔 Total notifications created: ${notifications.length}`);
-    
-    // Log all run IDs and dates for verification
-    runs.forEach((run, index) => {
-        console.log(`  Run ${index + 1}: ID=${run.id} (${isValidUUID(run.id) ? '✅ Valid' : '❌ Invalid'})`);
-        console.log(`    Date: ${run.date} (${new Date(run.date).toISOString() === run.date ? '✅ Valid ISO' : '❌ Invalid ISO'})`);
-    });
-    
-    // Log notifications
-    notifications.forEach((notification, index) => {
-        console.log(`  Notification ${index + 1}: ${notification.title}`);
-        console.log(`    Message: ${notification.message}`);
-    });
+app.listen(PORT, async () => {
+    console.log(`🚀 Run With Kam API server starting on port ${PORT}`);
+    try {
+        if (USE_DB) {
+            await ensureTables();
+            const count = await dbCountRuns();
+            if (count === 0) {
+                // Seed three sample runs like the in-memory initializer
+                const samples = [
+                    { id: uuidv4(), date: createFormattedDate(1, '06:00'), time: '06:00', location: 'Central Park', pace: '8:30/mile', description: 'Morning run around the reservoir' },
+                    { id: uuidv4(), date: createFormattedDate(3, '17:30'), time: '17:30', location: 'Brooklyn Bridge', pace: '9:00/mile', description: 'Sunset run across the bridge' },
+                    { id: uuidv4(), date: createFormattedDate(7, '07:00'), time: '07:00', location: 'Prospect Park', pace: '7:30/mile', description: 'Speed workout on the loop' }
+                ];
+                for (const r of samples) { await dbCreateRun(r); sendRunNotification(r); }
+                console.log('🌱 Seeded sample runs into Postgres');
+            }
+        } else {
+            // Local/in-memory boot
+            cleanupInvalidIDs();
+            initializeSampleData();
+            normalizeExistingRunDates();
+        }
+    } catch (e) {
+        console.error('❌ Startup error:', e);
+    }
+
+    console.log(`✅ Service ready. Health: /api/health`);
 });
 
 module.exports = app;
