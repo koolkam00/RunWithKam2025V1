@@ -146,7 +146,7 @@ async function dbCreateOrUpdateRSVP(runId, entry) {
     // Replace any prior RSVP for this user on this run
     if (entry.username && entry.username.trim() !== '') {
         await pool.query(
-            'DELETE FROM rsvps WHERE run_id=$1 AND LOWER(COALESCE(username, '')) = LOWER($2)'
+            "DELETE FROM rsvps WHERE run_id=$1 AND LOWER(COALESCE(username, '')) = LOWER($2)"
             , [runId, entry.username]
         );
     } else {
