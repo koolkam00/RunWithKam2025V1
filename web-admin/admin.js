@@ -398,9 +398,12 @@ function displayLeaderboard(users) {
                             <span><i class="fas fa-route"></i> ${user.totalMiles} miles</span>
                         </div>
                         <div class="user-increment" style="margin-top:8px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                            <button class="btn btn-secondary btn-sm" data-action="dec-run" data-id="${user.id}">- Run</button>
                             <button class="btn btn-secondary btn-sm" data-action="inc-run" data-id="${user.id}">+ Run</button>
+                            <button class="btn btn-secondary btn-sm" data-action="dec-mile" data-id="${user.id}">- 1 Mile</button>
                             <button class="btn btn-secondary btn-sm" data-action="inc-mile" data-id="${user.id}">+ 1 Mile</button>
                             <input type="number" min="0.1" step="0.1" placeholder="Miles" data-miles-input="${user.id}" style="width:90px; padding:6px; border:1px solid #ddd; border-radius:6px;">
+                            <button class="btn btn-secondary btn-sm" data-action="dec-mile-custom" data-id="${user.id}">- Miles</button>
                             <button class="btn btn-secondary btn-sm" data-action="inc-mile-custom" data-id="${user.id}">+ Miles</button>
                         </div>
                     </div>
@@ -414,8 +417,10 @@ function displayLeaderboard(users) {
         // Hook up action buttons
         leaderboardContainer.querySelectorAll('[data-action="edit-user"]').forEach(btn => btn.addEventListener('click', () => openEditUser(btn.getAttribute('data-id'))));
         leaderboardContainer.querySelectorAll('[data-action="delete-user"]').forEach(btn => btn.addEventListener('click', () => deleteUser(btn.getAttribute('data-id'))));
-        // Increment actions
+        // Increment/decrement actions
+        leaderboardContainer.querySelectorAll('[data-action="dec-run"]').forEach(btn => btn.addEventListener('click', () => incrementUserRuns(btn.getAttribute('data-id'), -1)));
         leaderboardContainer.querySelectorAll('[data-action="inc-run"]').forEach(btn => btn.addEventListener('click', () => incrementUserRuns(btn.getAttribute('data-id'), 1)));
+        leaderboardContainer.querySelectorAll('[data-action="dec-mile"]').forEach(btn => btn.addEventListener('click', () => incrementUserMiles(btn.getAttribute('data-id'), -1)));
         leaderboardContainer.querySelectorAll('[data-action="inc-mile"]').forEach(btn => btn.addEventListener('click', () => incrementUserMiles(btn.getAttribute('data-id'), 1)));
         leaderboardContainer.querySelectorAll('[data-action="inc-mile-custom"]').forEach(btn => btn.addEventListener('click', () => {
             const userId = btn.getAttribute('data-id');
@@ -423,6 +428,17 @@ function displayLeaderboard(users) {
             const val = parseFloat((input && input.value) || '0');
             if (!isNaN(val) && val > 0) {
                 incrementUserMiles(userId, val);
+                input.value = '';
+            } else {
+                alert('Enter a valid miles amount (> 0).');
+            }
+        }));
+        leaderboardContainer.querySelectorAll('[data-action="dec-mile-custom"]').forEach(btn => btn.addEventListener('click', () => {
+            const userId = btn.getAttribute('data-id');
+            const input = leaderboardContainer.querySelector(`[data-miles-input="${userId}"]`);
+            const val = parseFloat((input && input.value) || '0');
+            if (!isNaN(val) && val > 0) {
+                incrementUserMiles(userId, -val);
                 input.value = '';
             } else {
                 alert('Enter a valid miles amount (> 0).');
@@ -686,10 +702,11 @@ function deleteUser(userId) {
 function incrementUserRuns(userId, delta) {
     const user = currentLeaderboard.find(u => u.id === userId);
     if (!user) return;
+    const newTotalRuns = Math.max(0, (user.totalRuns || 0) + delta);
     const payload = {
         firstName: user.firstName,
         lastName: user.lastName,
-        totalRuns: (user.totalRuns || 0) + delta,
+        totalRuns: newTotalRuns,
         totalMiles: user.totalMiles,
         appUserId: user.appUserId,
         isRegistered: user.isRegistered
@@ -707,11 +724,12 @@ function incrementUserRuns(userId, delta) {
 function incrementUserMiles(userId, deltaMiles) {
     const user = currentLeaderboard.find(u => u.id === userId);
     if (!user) return;
+    const newMiles = Math.max(0, parseFloat(((user.totalMiles || 0) + deltaMiles).toFixed(2)));
     const payload = {
         firstName: user.firstName,
         lastName: user.lastName,
         totalRuns: user.totalRuns,
-        totalMiles: parseFloat(((user.totalMiles || 0) + deltaMiles).toFixed(2)),
+        totalMiles: newMiles,
         appUserId: user.appUserId,
         isRegistered: user.isRegistered
     };
