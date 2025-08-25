@@ -12,4 +12,10 @@ services:
         value: production
       - key: TZ
         value: America/New_York
+      - key: DATABASE_URL
+        fromDatabase: runwithkam-db
     healthCheckPath: /api/health
+
+databases:
+  - name: runwithkam-db
+    plan: free

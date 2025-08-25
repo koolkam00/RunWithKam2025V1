@@ -3,15 +3,147 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const { v4: uuidv4 } = require('uuid');
+let Pool;
+try { ({ Pool } = require('pg')); } catch (_) { /* pg optional for local */ }
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const USE_DB = !!process.env.DATABASE_URL && typeof Pool === 'function';
+let pool = null;
+if (USE_DB) {
+    const isProd = process.env.NODE_ENV === 'production';
+    pool = new Pool({
+        connectionString: process.env.DATABASE_URL,
+        ssl: isProd ? { rejectUnauthorized: false } : undefined
+    });
+}
 
 // Middleware
 app.use(helmet());
 app.use(cors());
 app.use(morgan('combined'));
 app.use(express.json());
+
+// === Postgres bootstrap ===
+async function ensureTables() {
+    if (!USE_DB) return;
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS runs (
+            id UUID PRIMARY KEY,
+            date_iso TEXT NOT NULL,
+            time TEXT NOT NULL,
+            location TEXT NOT NULL,
+            pace TEXT NOT NULL,
+            description TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS leaderboard_users (
+            id UUID PRIMARY KEY,
+            first_name TEXT NOT NULL,
+            last_name TEXT NOT NULL,
+            username TEXT UNIQUE,
+            total_runs INTEGER NOT NULL DEFAULT 0,
+            total_miles DOUBLE PRECISION NOT NULL DEFAULT 0,
+            last_updated TEXT NOT NULL,
+            app_user_id TEXT,
+            is_registered BOOLEAN NOT NULL DEFAULT false
+        );
+        CREATE TABLE IF NOT EXISTS rsvps (
+            id UUID PRIMARY KEY,
+            run_id UUID NOT NULL REFERENCES runs(id) ON DELETE CASCADE,
+            first_name TEXT NOT NULL,
+            last_name TEXT NOT NULL,
+            username TEXT,
+            status TEXT NOT NULL,
+            timestamp TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_rsvps_run ON rsvps(run_id);
+    `);
+}
+
+async function dbGetRuns() {
+    const { rows } = await pool.query('SELECT id, date_iso AS date, time, location, pace, description FROM runs ORDER BY date_iso ASC');
+    return rows;
+}
+
+async function dbGetRunWithRsvps(runId) {
+    const runRes = await pool.query('SELECT id, date_iso AS date, time, location, pace, description FROM runs WHERE id = $1', [runId]);
+    if (runRes.rowCount === 0) return null;
+    const rsvpsRes = await pool.query('SELECT id, run_id AS "runId", first_name AS "firstName", last_name AS "lastName", username, status, timestamp FROM rsvps WHERE run_id = $1 ORDER BY timestamp DESC', [runId]);
+    return { ...runRes.rows[0], rsvps: rsvpsRes.rows };
+}
+
+async function dbCreateRun(newRun) {
+    await pool.query(
+        'INSERT INTO runs (id, date_iso, time, location, pace, description) VALUES ($1,$2,$3,$4,$5,$6)',
+        [newRun.id, newRun.date, newRun.time, newRun.location, newRun.pace, newRun.description]
+    );
+    return newRun;
+}
+
+async function dbUpdateRun(updatedRun) {
+    await pool.query(
+        'UPDATE runs SET date_iso=$2, time=$3, location=$4, pace=$5, description=$6 WHERE id=$1',
+        [updatedRun.id, updatedRun.date, updatedRun.time, updatedRun.location, updatedRun.pace, updatedRun.description]
+    );
+    return updatedRun;
+}
+
+async function dbDeleteRun(runId) {
+    await pool.query('DELETE FROM runs WHERE id = $1', [runId]);
+}
+
+async function dbGetLeaderboard(includeAll) {
+    const { rows } = await pool.query(
+        `SELECT id, first_name AS "firstName", last_name AS "lastName", username, total_runs AS "totalRuns",
+                total_miles AS "totalMiles", last_updated AS "lastUpdated", app_user_id AS "appUserId",
+                is_registered AS "isRegistered"
+         FROM leaderboard_users ${includeAll ? '' : 'WHERE is_registered = true'} ORDER BY total_miles DESC`
+    );
+    return rows;
+}
+
+async function dbCreateLeaderboardUser(user) {
+    await pool.query(
+        `INSERT INTO leaderboard_users (id, first_name, last_name, username, total_runs, total_miles, last_updated, app_user_id, is_registered)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+        [user.id, user.firstName, user.lastName, user.username, user.totalRuns, user.totalMiles, user.lastUpdated, user.appUserId, user.isRegistered]
+    );
+    return user;
+}
+
+async function dbUpdateLeaderboardUser(userId, patch) {
+    const { firstName, lastName, totalRuns, totalMiles, appUserId, isRegistered } = patch;
+    const now = new Date().toISOString();
+    await pool.query(
+        `UPDATE leaderboard_users SET first_name=$2, last_name=$3, total_runs=$4, total_miles=$5, last_updated=$6,
+                app_user_id=COALESCE($7, app_user_id), is_registered=COALESCE($8, is_registered) WHERE id=$1`,
+        [userId, firstName, lastName, totalRuns, totalMiles, now, appUserId ?? null, typeof isRegistered === 'boolean' ? isRegistered : null]
+    );
+    const { rows } = await pool.query(
+        `SELECT id, first_name AS "firstName", last_name AS "lastName", username, total_runs AS "totalRuns",
+                total_miles AS "totalMiles", last_updated AS "lastUpdated", app_user_id AS "appUserId", is_registered AS "isRegistered"
+         FROM leaderboard_users WHERE id=$1`,
+        [userId]
+    );
+    return rows[0];
+}
+
+async function dbDeleteLeaderboardUser(userId) {
+    await pool.query('DELETE FROM leaderboard_users WHERE id=$1', [userId]);
+}
+
+async function dbCreateOrUpdateRSVP(runId, entry) {
+    // If username present, replace existing username entry for this run
+    if (entry.username) {
+        await pool.query('DELETE FROM rsvps WHERE run_id=$1 AND LOWER(COALESCE(username, \'\')) = LOWER($2)', [runId, entry.username]);
+    }
+    await pool.query(
+        `INSERT INTO rsvps (id, run_id, first_name, last_name, username, status, timestamp)
+         VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+        [entry.id, runId, entry.firstName, entry.lastName, entry.username, entry.status, entry.timestamp]
+    );
+    return entry;
+}
 
 // Timezone helpers: Convert America/New_York wall time to UTC ISO string reliably
 function formatInTimeZone(date, timeZone) {
@@ -410,211 +542,95 @@ app.get('/api/health', (req, res) => {
 });
 
 // GET /api/runs - Get all runs
-app.get('/api/runs', (req, res) => {
+app.get('/api/runs', async (req, res) => {
     try {
-        // Sort runs by date
-        const sortedRuns = [...runs].sort((a, b) => new Date(a.date) - new Date(b.date));
-        
-        // Log the response for debugging
-        console.log(`📊 Returning ${sortedRuns.length} runs`);
-        sortedRuns.forEach(run => {
-            console.log(`  - Run ID: ${run.id} (${typeof run.id}) - ${run.location} at ${run.time}`);
-            console.log(`    Date: ${run.date} (Type: ${typeof run.date})`);
-        });
-        
-        // Log the full response structure for debugging
-        const responseData = {
-            success: true,
-            data: sortedRuns,
-            count: sortedRuns.length,
-            message: 'Runs retrieved successfully'
-        };
-        console.log(`📤 Response structure:`, JSON.stringify(responseData, null, 2));
-        
-        res.json({
-            success: true,
-            data: sortedRuns,
-            count: sortedRuns.length,
-            message: 'Runs retrieved successfully',
-            timestamp: new Date().toISOString(),
-            version: '1.0.0'
-        });
+        let list;
+        if (USE_DB) {
+            list = await dbGetRuns();
+        } else {
+            list = [...runs].sort((a, b) => new Date(a.date) - new Date(b.date));
+        }
+        res.json({ success: true, data: list, count: list.length, message: 'Runs retrieved successfully', timestamp: new Date().toISOString(), version: '1.0.0' });
     } catch (error) {
         console.error('❌ Error in GET /api/runs:', error);
-        res.status(500).json({
-            success: false,
-            data: null,
-            count: 0,
-            message: error.message
-        });
+        res.status(500).json({ success: false, data: null, count: 0, message: error.message });
     }
 });
 
 // GET /api/runs/:id - Get a specific run
-app.get('/api/runs/:id', (req, res) => {
+app.get('/api/runs/:id', async (req, res) => {
     try {
-        const run = findRunById(req.params.id);
-        
-        if (!run) {
-            return res.status(404).json({
-                success: false,
-                data: null,
-                count: 0,
-                message: 'Run not found'
-            });
+        const runId = req.params.id;
+        let result;
+        if (USE_DB) {
+            result = await dbGetRunWithRsvps(runId);
+        } else {
+            const run = findRunById(runId);
+            if (!run) return res.status(404).json({ success: false, data: null, count: 0, message: 'Run not found' });
+            const rsvps = runRsvps[run.id] || [];
+            result = { ...run, rsvps };
         }
-        const rsvps = runRsvps[run.id] || [];
-        res.json({
-            success: true,
-            data: { ...run, rsvps },
-            count: rsvps.length,
-            message: 'Run retrieved successfully'
-        });
+        if (!result) return res.status(404).json({ success: false, data: null, count: 0, message: 'Run not found' });
+        res.json({ success: true, data: result, count: (result.rsvps || []).length, message: 'Run retrieved successfully' });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            data: null,
-            count: 0,
-            message: error.message
-        });
+        res.status(500).json({ success: false, data: null, count: 0, message: error.message });
     }
 });
 
 // POST /api/runs - Create a new run
-app.post('/api/runs', (req, res) => {
+app.post('/api/runs', async (req, res) => {
     try {
         const runData = req.body;
-        
-        // Validate and normalize input data
         const normalizedData = validateAndNormalizeRunData(runData);
-        
-        // Create new run with unique ID and normalized data
-        const newRun = {
-            id: uuidv4(),
-            ...normalizedData
-        };
-        
-        // Ensure ID is a valid UUID string
-        if (!newRun.id || typeof newRun.id !== 'string' || newRun.id.length !== 36) {
-            throw new Error('Failed to generate valid UUID');
+        const newRun = { id: uuidv4(), ...normalizedData };
+        if (!newRun.id || typeof newRun.id !== 'string' || newRun.id.length !== 36) throw new Error('Failed to generate valid UUID');
+        if (USE_DB) {
+            await dbCreateRun(newRun);
+        } else {
+            runs.push(newRun);
         }
-        
-        // Add to runs array
-        runs.push(newRun);
-        
-        // Send notification to all users about the new run
         const notification = sendRunNotification(newRun);
-        
-        console.log(`✅ Created new run with ID: ${newRun.id}`);
-        console.log(`🔔 Notification sent: ${notification.id}`);
-        
-        res.status(201).json({
-            success: true,
-            data: newRun,
-            notification: notification,
-            count: 1,
-            message: 'Run created successfully'
-        });
+        res.status(201).json({ success: true, data: newRun, notification, count: 1, message: 'Run created successfully' });
     } catch (error) {
-        res.status(400).json({
-            success: false,
-            data: null,
-            count: 0,
-            message: error.message
-        });
+        res.status(400).json({ success: false, data: null, count: 0, message: error.message });
     }
 });
 
 // PUT /api/runs/:id - Update an existing run
-app.put('/api/runs/:id', (req, res) => {
+app.put('/api/runs/:id', async (req, res) => {
     try {
         const runId = req.params.id;
-        
-        // Validate UUID format
-        if (!isValidUUID(runId)) {
-            return res.status(400).json({
-                success: false,
-                data: null,
-                count: 0,
-                message: 'Invalid run ID format'
-            });
+        if (!isValidUUID(runId)) return res.status(400).json({ success: false, data: null, count: 0, message: 'Invalid run ID format' });
+        const normalizedData = validateAndNormalizeRunData(req.body);
+        const updatedRun = { id: runId, ...normalizedData };
+        if (USE_DB) {
+            await dbUpdateRun(updatedRun);
+        } else {
+            const runIndex = runs.findIndex(run => run.id === runId);
+            if (runIndex === -1) return res.status(404).json({ success: false, data: null, count: 0, message: 'Run not found' });
+            runs[runIndex] = updatedRun;
         }
-        
-        const runIndex = runs.findIndex(run => run.id === runId);
-        
-        if (runIndex === -1) {
-            return res.status(404).json({
-                success: false,
-                data: null,
-                count: 0,
-                message: 'Run not found'
-            });
-        }
-        
-        const runData = req.body;
-        
-        // Validate and normalize input data
-        const normalizedData = validateAndNormalizeRunData(runData);
-        
-        // Update the run
-        const updatedRun = {
-            ...runs[runIndex],
-            ...normalizedData,
-            id: runId // Ensure ID doesn't change
-        };
-        
-        runs[runIndex] = updatedRun;
-        
-        console.log(`✅ Updated run with ID: ${runId}`);
-        
-        res.json({
-            success: true,
-            data: updatedRun,
-            count: 1,
-            message: 'Run updated successfully'
-        });
+        res.json({ success: true, data: updatedRun, count: 1, message: 'Run updated successfully' });
     } catch (error) {
         console.error('❌ Error in PUT /api/runs:', error);
-        res.status(400).json({
-            success: false,
-            data: null,
-            count: 0,
-            message: error.message
-        });
+        res.status(400).json({ success: false, data: null, count: 0, message: error.message });
     }
 });
 
 // DELETE /api/runs/:id - Delete a run
-app.delete('/api/runs/:id', (req, res) => {
+app.delete('/api/runs/:id', async (req, res) => {
     try {
         const runId = req.params.id;
-        const runIndex = runs.findIndex(run => run.id === runId);
-        
-        if (runIndex === -1) {
-            return res.status(404).json({
-                success: false,
-                data: null,
-                count: 0,
-                message: 'Run not found'
-            });
+        if (USE_DB) {
+            await dbDeleteRun(runId);
+            return res.json({ success: true, data: { id: runId }, count: 1, message: 'Run deleted successfully' });
         }
-        
-        // Remove the run
+        const runIndex = runs.findIndex(run => run.id === runId);
+        if (runIndex === -1) return res.status(404).json({ success: false, data: null, count: 0, message: 'Run not found' });
         const deletedRun = runs.splice(runIndex, 1)[0];
-        
-        res.json({
-            success: true,
-            data: deletedRun,
-            count: 1,
-            message: 'Run deleted successfully'
-        });
+        res.json({ success: true, data: deletedRun, count: 1, message: 'Run deleted successfully' });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            data: null,
-            count: 0,
-            message: error.message
-        });
+        res.status(500).json({ success: false, data: null, count: 0, message: error.message });
     }
 });
 
@@ -697,37 +713,35 @@ app.put('/api/notifications/:id/read', (req, res) => {
 
 // Leaderboard API Endpoints
 // POST /api/runs/:id/rsvp - Create or update RSVP for a run
-app.post('/api/runs/:id/rsvp', (req, res) => {
+app.post('/api/runs/:id/rsvp', async (req, res) => {
     try {
         const runId = req.params.id;
-        const run = findRunById(runId);
-        if (!run) return res.status(404).json({ success: false, message: 'Run not found' });
+        if (USE_DB) {
+            const run = await dbGetRunWithRsvps(runId);
+            if (!run) return res.status(404).json({ success: false, message: 'Run not found' });
+        } else {
+            const run = findRunById(runId);
+            if (!run) return res.status(404).json({ success: false, message: 'Run not found' });
+        }
         const { firstName, lastName, username, status } = req.body || {};
         if (!firstName || !lastName || !status || !['yes','no'].includes(String(status).toLowerCase())) {
             return res.status(400).json({ success: false, message: 'Missing firstName/lastName/status or invalid status' });
         }
         const uname = username ? String(username).toLowerCase() : null;
-        const entry = {
-            id: uuidv4(),
-            runId,
-            firstName: String(firstName).trim(),
-            lastName: String(lastName).trim(),
-            username: uname,
-            status: String(status).toLowerCase(),
-            timestamp: new Date().toISOString()
-        };
-        const list = runRsvps[runId] || [];
-        // Replace existing RSVP from same username if present
-        let updated = false;
-        if (uname) {
-            for (let i = 0; i < list.length; i++) {
-                if ((list[i].username || '').toLowerCase() === uname) {
-                    list[i] = entry; updated = true; break;
+        const entry = { id: uuidv4(), runId, firstName: String(firstName).trim(), lastName: String(lastName).trim(), username: uname, status: String(status).toLowerCase(), timestamp: new Date().toISOString() };
+        if (USE_DB) {
+            await dbCreateOrUpdateRSVP(runId, entry);
+        } else {
+            const list = runRsvps[runId] || [];
+            let updated = false;
+            if (uname) {
+                for (let i = 0; i < list.length; i++) {
+                    if ((list[i].username || '').toLowerCase() === uname) { list[i] = entry; updated = true; break; }
                 }
             }
+            if (!updated) list.push(entry);
+            runRsvps[runId] = list;
         }
-        if (!updated) list.push(entry);
-        runRsvps[runId] = list;
         res.status(201).json({ success: true, data: entry, count: 1, message: 'RSVP saved' });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -809,167 +823,89 @@ app.post('/api/users/register', (req, res) => {
 app.get('/api/leaderboard', (req, res) => {
     try {
         const includeAll = req.query.includeAll === '1';
-        let list = [...leaderboardUsers];
-        if (!includeAll) {
-            list = list.filter(u => u.isRegistered === true);
-        }
-        // Sort users by total miles (descending)
-        const sortedUsers = list.sort((a, b) => b.totalMiles - a.totalMiles);
-        
-        // Add rank to each user
-        sortedUsers.forEach((user, index) => {
-            user.rank = index + 1;
-        });
-        
-        res.json({
-            success: true,
-            data: sortedUsers,
-            count: sortedUsers.length,
-            message: 'Leaderboard retrieved successfully',
-            timestamp: new Date().toISOString(),
-            version: '1.0.0'
-        });
+        const handle = async () => {
+            let list;
+            if (USE_DB) {
+                list = await dbGetLeaderboard(includeAll);
+            } else {
+                list = [...leaderboardUsers];
+                if (!includeAll) list = list.filter(u => u.isRegistered === true);
+            }
+            const sortedUsers = list.sort((a, b) => b.totalMiles - a.totalMiles);
+            sortedUsers.forEach((user, index) => { user.rank = index + 1; });
+            res.json({ success: true, data: sortedUsers, count: sortedUsers.length, message: 'Leaderboard retrieved successfully', timestamp: new Date().toISOString(), version: '1.0.0' });
+        };
+        if (USE_DB) { handle(); } else { handle(); }
     } catch (error) {
         console.error('❌ Error getting leaderboard:', error);
-        res.status(500).json({
-            success: false,
-            error: error.message,
-            timestamp: new Date().toISOString(),
-            version: '1.0.0'
-        });
+        res.status(500).json({ success: false, error: error.message, timestamp: new Date().toISOString(), version: '1.0.0' });
     }
 });
 
 // POST /api/leaderboard - Create new leaderboard user
-app.post('/api/leaderboard', (req, res) => {
+app.post('/api/leaderboard', async (req, res) => {
     try {
-        const { firstName, lastName, totalRuns, totalMiles, appUserId, isRegistered } = req.body;
-        
-        // Validate required fields
+        const { firstName, lastName, totalRuns, totalMiles, appUserId, isRegistered, username } = req.body;
         if (!firstName || !lastName || totalRuns === undefined || totalMiles === undefined) {
-            return res.status(400).json({
-                success: false,
-                error: 'Missing required fields: firstName, lastName, totalRuns, totalMiles',
-                timestamp: new Date().toISOString(),
-                version: '1.0.0'
-            });
+            return res.status(400).json({ success: false, error: 'Missing required fields: firstName, lastName, totalRuns, totalMiles', timestamp: new Date().toISOString(), version: '1.0.0' });
         }
-        
         const newUser = {
             id: uuidv4(),
             firstName: firstName.trim(),
             lastName: lastName.trim(),
+            username: username ? String(username).trim().toLowerCase() : null,
             totalRuns: parseInt(totalRuns) || 0,
             totalMiles: parseFloat(totalMiles) || 0,
             lastUpdated: new Date().toISOString(),
             appUserId: appUserId || null,
             isRegistered: !!isRegistered
         };
-        
-        leaderboardUsers.push(newUser);
-        
-        console.log(`🏆 New leaderboard user added: ${newUser.firstName} ${newUser.lastName}`);
-        
-        res.status(201).json({
-            success: true,
-            data: newUser,
-            message: 'User added to leaderboard successfully',
-            timestamp: new Date().toISOString(),
-            version: '1.0.0'
-        });
+        if (USE_DB) {
+            await dbCreateLeaderboardUser(newUser);
+        } else {
+            leaderboardUsers.push(newUser);
+        }
+        res.status(201).json({ success: true, data: newUser, message: 'User added to leaderboard successfully', timestamp: new Date().toISOString(), version: '1.0.0' });
     } catch (error) {
         console.error('❌ Error creating leaderboard user:', error);
-        res.status(500).json({
-            success: false,
-            error: error.message,
-            timestamp: new Date().toISOString(),
-            version: '1.0.0'
-        });
+        res.status(500).json({ success: false, error: error.message, timestamp: new Date().toISOString(), version: '1.0.0' });
     }
 });
 
 // PUT /api/leaderboard/:id - Update leaderboard user
-app.put('/api/leaderboard/:id', (req, res) => {
+app.put('/api/leaderboard/:id', async (req, res) => {
     try {
         const userId = req.params.id;
         const { firstName, lastName, totalRuns, totalMiles, appUserId, isRegistered } = req.body;
-        
-        const userIndex = leaderboardUsers.findIndex(u => u.id === userId);
-        if (userIndex === -1) {
-            return res.status(404).json({
-                success: false,
-                error: 'User not found',
-                timestamp: new Date().toISOString(),
-                version: '1.0.0'
-            });
+        if (USE_DB) {
+            const updated = await dbUpdateLeaderboardUser(userId, { firstName: firstName.trim(), lastName: lastName.trim(), totalRuns: parseInt(totalRuns) || 0, totalMiles: parseFloat(totalMiles) || 0, appUserId, isRegistered });
+            return res.json({ success: true, data: updated, message: 'User updated successfully', timestamp: new Date().toISOString(), version: '1.0.0' });
         }
-        
-        // Update user data
-        leaderboardUsers[userIndex] = {
-            ...leaderboardUsers[userIndex],
-            firstName: firstName.trim(),
-            lastName: lastName.trim(),
-            totalRuns: parseInt(totalRuns) || 0,
-            totalMiles: parseFloat(totalMiles) || 0,
-            lastUpdated: new Date().toISOString(),
-            appUserId: appUserId !== undefined ? appUserId : leaderboardUsers[userIndex].appUserId,
-            isRegistered: typeof isRegistered === 'boolean' ? isRegistered : leaderboardUsers[userIndex].isRegistered
-        };
-        
-        console.log(`🏆 Leaderboard user updated: ${leaderboardUsers[userIndex].firstName} ${leaderboardUsers[userIndex].lastName}`);
-        
-        res.json({
-            success: true,
-            data: leaderboardUsers[userIndex],
-            message: 'User updated successfully',
-            timestamp: new Date().toISOString(),
-            version: '1.0.0'
-        });
+        const userIndex = leaderboardUsers.findIndex(u => u.id === userId);
+        if (userIndex === -1) return res.status(404).json({ success: false, error: 'User not found', timestamp: new Date().toISOString(), version: '1.0.0' });
+        leaderboardUsers[userIndex] = { ...leaderboardUsers[userIndex], firstName: firstName.trim(), lastName: lastName.trim(), totalRuns: parseInt(totalRuns) || 0, totalMiles: parseFloat(totalMiles) || 0, lastUpdated: new Date().toISOString(), appUserId: appUserId !== undefined ? appUserId : leaderboardUsers[userIndex].appUserId, isRegistered: typeof isRegistered === 'boolean' ? isRegistered : leaderboardUsers[userIndex].isRegistered };
+        res.json({ success: true, data: leaderboardUsers[userIndex], message: 'User updated successfully', timestamp: new Date().toISOString(), version: '1.0.0' });
     } catch (error) {
         console.error('❌ Error updating leaderboard user:', error);
-        res.status(500).json({
-            success: false,
-            error: error.message,
-            timestamp: new Date().toISOString(),
-            version: '1.0.0'
-        });
+        res.status(500).json({ success: false, error: error.message, timestamp: new Date().toISOString(), version: '1.0.0' });
     }
 });
 
 // DELETE /api/leaderboard/:id - Delete leaderboard user
-app.delete('/api/leaderboard/:id', (req, res) => {
+app.delete('/api/leaderboard/:id', async (req, res) => {
     try {
         const userId = req.params.id;
-        const userIndex = leaderboardUsers.findIndex(u => u.id === userId);
-        
-        if (userIndex === -1) {
-            return res.status(404).json({
-                success: false,
-                error: 'User not found',
-                timestamp: new Date().toISOString(),
-                version: '1.0.0'
-        });
+        if (USE_DB) {
+            await dbDeleteLeaderboardUser(userId);
+            return res.json({ success: true, data: { id: userId }, message: 'User deleted successfully', timestamp: new Date().toISOString(), version: '1.0.0' });
         }
-        
+        const userIndex = leaderboardUsers.findIndex(u => u.id === userId);
+        if (userIndex === -1) return res.status(404).json({ success: false, error: 'User not found', timestamp: new Date().toISOString(), version: '1.0.0' });
         const deletedUser = leaderboardUsers.splice(userIndex, 1)[0];
-        
-        console.log(`🏆 Leaderboard user deleted: ${deletedUser.firstName} ${deletedUser.lastName}`);
-        
-        res.json({
-            success: true,
-            data: deletedUser,
-            message: 'User deleted successfully',
-            timestamp: new Date().toISOString(),
-            version: '1.0.0'
-        });
+        res.json({ success: true, data: deletedUser, message: 'User deleted successfully', timestamp: new Date().toISOString(), version: '1.0.0' });
     } catch (error) {
         console.error('❌ Error deleting leaderboard user:', error);
-        res.status(500).json({
-            success: false,
-            error: error.message,
-            timestamp: new Date().toISOString(),
-            version: '1.0.0'
-        });
+        res.status(500).json({ success: false, error: error.message, timestamp: new Date().toISOString(), version: '1.0.0' });
     }
 });
 
