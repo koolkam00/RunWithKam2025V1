@@ -1,5 +1,6 @@
 import SwiftUI
 import Foundation
+import Combine
 
 struct RunningCalendarView: View {
     @AppStorage("firstName") private var firstName: String = ""
@@ -372,6 +373,11 @@ struct RunCardView: View {
         .background(Color.gray.opacity(0.1))
         .cornerRadius(12)
         .onAppear { Task { await loadRunDetail() } }
+        .onReceive(NotificationCenter.default.publisher(for: .openRunDetail)) { note in
+            if let runId = note.userInfo?["runId"] as? String, runId == run.id {
+                Task { await loadRunDetail() }
+            }
+        }
     }
 
     private func loadRunDetail() async {
@@ -399,16 +405,6 @@ struct RunCardView: View {
             }
         } catch {
             await MainActor.run { self.error = error.localizedDescription }
-        }
-    }
-
-    // Listen for deep link to open specific run detail
-    init(run: ScheduledRun) {
-        self.run = run
-        NotificationCenter.default.addObserver(forName: .openRunDetail, object: nil, queue: .main) { note in
-            if let runId = note.userInfo?["runId"] as? String, runId == run.id {
-                Task { await self.loadRunDetail() }
-            }
         }
     }
 
