@@ -37,13 +37,18 @@ app.use((req, res, next) => {
     next();
 });
 
-// Helper function to create properly formatted dates
+// Helper function to create properly formatted dates in Eastern Time
 function createFormattedDate(daysFromNow) {
     const date = new Date();
     date.setDate(date.getDate() + daysFromNow);
-    // Set time to midnight UTC to ensure maximum compatibility
-    date.setUTCHours(0, 0, 0, 0);
-    return date.toISOString();
+    
+    // Set time to midnight Eastern Time (UTC-5) to ensure dates display correctly
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const day = date.getDate();
+    const easternDate = new Date(Date.UTC(year, month, day, 5, 0, 0, 0));
+    
+    return easternDate.toISOString();
 }
 
 // In-memory data storage (replace with database in production)
@@ -101,11 +106,13 @@ function normalizeExistingRunDates() {
                 const year = parsedDate.getFullYear();
                 const month = parsedDate.getMonth();
                 const day = parsedDate.getDate();
-                const utcDate = new Date(Date.UTC(year, month, day, 0, 0, 0, 0));
-                const isoDate = utcDate.toISOString();
+                
+                // Create date in Eastern Time (UTC-5) by adding 5 hours to get to midnight EST
+                const easternDate = new Date(Date.UTC(year, month, day, 5, 0, 0, 0));
+                const isoDate = easternDate.toISOString();
                 
                 if (run.date !== isoDate) {
-                    console.log(`📅 Normalizing date: ${run.date} -> ${isoDate}`);
+                    console.log(`📅 Normalizing date to Eastern Time: ${run.date} -> ${isoDate}`);
                     run.date = isoDate;
                 }
             }
@@ -210,15 +217,17 @@ function validateAndNormalizeRunData(runData) {
             throw new Error('Invalid date format');
         }
         
-        // Convert to ISO string and set to midnight UTC to ensure consistency
-        // This prevents timezone issues and ensures all dates are in the same format
+        // Convert to Eastern Time to ensure dates display correctly
+        // When user enters "2025-08-27", we want it to show as August 27th in EST
         const year = parsedDate.getFullYear();
         const month = parsedDate.getMonth();
         const day = parsedDate.getDate();
-        const utcDate = new Date(Date.UTC(year, month, day, 0, 0, 0, 0));
-        normalizedDate = utcDate.toISOString();
         
-        console.log(`📅 Date normalized to ISO: ${runData.date} -> ${normalizedDate}`);
+        // Create date in Eastern Time (UTC-5) by adding 5 hours to get to midnight EST
+        const easternDate = new Date(Date.UTC(year, month, day, 5, 0, 0, 0));
+        normalizedDate = easternDate.toISOString();
+        
+        console.log(`📅 Date normalized to Eastern Time: ${runData.date} -> ${normalizedDate}`);
     } catch (error) {
         throw new Error('Invalid date format. Please use YYYY-MM-DD format (e.g., 2025-08-27)');
     }
