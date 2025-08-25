@@ -13,6 +13,9 @@ app.use(cors());
 app.use(morgan('combined'));
 app.use(express.json());
 
+// Serve static files from web-admin directory
+app.use(express.static('web-admin'));
+
 // Add cache control headers to prevent caching issues
 app.use((req, res, next) => {
     res.header('Cache-Control', 'no-cache, no-store, must-revalidate');
@@ -682,19 +685,24 @@ app.delete('/api/leaderboard/:id', (req, res) => {
     }
 });
 
-// Root endpoint
+// Root endpoint - serve web admin
 app.get('/', (req, res) => {
+    res.sendFile(__dirname + '/web-admin/index.html');
+});
+
+// API info endpoint
+app.get('/api', (req, res) => {
     res.json({
         success: true,
         data: {
             name: 'Run With Kam API',
             version: '1.0.0',
-                    endpoints: {
-            runs: '/api/runs',
-            notifications: '/api/notifications',
-            leaderboard: '/api/leaderboard',
-            health: '/api/health'
-        }
+            endpoints: {
+                runs: '/api/runs',
+                notifications: '/api/notifications',
+                leaderboard: '/api/leaderboard',
+                health: '/api/health'
+            }
         },
         count: 1,
         message: 'Welcome to Run With Kam API'
