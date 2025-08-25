@@ -324,7 +324,96 @@
         window.addEventListener('load', function() {
             console.log('📊 Page loaded, loading data automatically...');
             loadBasicData();
+            setupEventListeners();
         });
+        
+        // Setup all button event listeners
+        function setupEventListeners() {
+            console.log('🔗 Setting up event listeners...');
+            
+            // Add Run Button
+            const addRunBtn = document.getElementById('addRunBtn');
+            if (addRunBtn) {
+                addRunBtn.addEventListener('click', showAddRunModal);
+                console.log('✅ Add Run button listener added');
+            }
+            
+            // Refresh Button
+            const refreshBtn = document.getElementById('refreshBtn');
+            if (refreshBtn) {
+                refreshBtn.addEventListener('click', refreshData);
+                console.log('✅ Refresh button listener added');
+            }
+            
+            // Debug Button
+            const debugBtn = document.getElementById('debugBtn');
+            if (debugBtn) {
+                debugBtn.addEventListener('click', debugDateConversion);
+                console.log('✅ Debug button listener added');
+            }
+            
+            // Logout Button
+            const logoutBtn = document.getElementById('logoutBtn');
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', handleLogout);
+                console.log('✅ Logout button listener added');
+            }
+            
+            // Calendar Navigation
+            const prevMonthBtn = document.getElementById('prevMonth');
+            if (prevMonthBtn) {
+                prevMonthBtn.addEventListener('click', () => navigateMonth(-1));
+                console.log('✅ Previous Month button listener added');
+            }
+            
+            const nextMonthBtn = document.getElementById('nextMonth');
+            if (nextMonthBtn) {
+                nextMonthBtn.addEventListener('click', () => navigateMonth(1));
+                console.log('✅ Next Month button listener added');
+            }
+            
+            // Add User Button
+            const addUserBtn = document.getElementById('addUserBtn');
+            if (addUserBtn) {
+                addUserBtn.addEventListener('click', showAddUserModal);
+                console.log('✅ Add User button listener added');
+            }
+            
+            // Refresh Leaderboard Button
+            const refreshLeaderboardBtn = document.getElementById('refreshLeaderboardBtn');
+            if (refreshLeaderboardBtn) {
+                refreshLeaderboardBtn.addEventListener('click', refreshData);
+                console.log('✅ Refresh Leaderboard button listener added');
+            }
+            
+            // Modal Close Buttons
+            const closeModalBtn = document.getElementById('closeModal');
+            if (closeModalBtn) {
+                closeModalBtn.addEventListener('click', hideRunModal);
+                console.log('✅ Close Run Modal button listener added');
+            }
+            
+            const closeLeaderboardModalBtn = document.getElementById('closeLeaderboardModal');
+            if (closeLeaderboardModalBtn) {
+                closeLeaderboardModalBtn.addEventListener('click', hideLeaderboardModal);
+                console.log('✅ Close Leaderboard Modal button listener added');
+            }
+            
+            // Cancel Buttons
+            const cancelRunBtn = document.getElementById('cancelRun');
+            if (cancelRunBtn) {
+                cancelRunBtn.addEventListener('click', hideRunModal);
+                console.log('✅ Cancel Run button listener added');
+            }
+            
+            const cancelLeaderboardBtn = document.getElementById('cancelLeaderboard');
+            if (cancelLeaderboardBtn) {
+                cancelLeaderboardBtn.addEventListener('click', hideLeaderboardModal);
+                console.log('✅ Cancel Leaderboard button listener added');
+            }
+            
+            console.log('🎯 All event listeners setup complete!');
+        }
         
         // Load basic data
         function loadBasicData() {
