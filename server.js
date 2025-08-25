@@ -52,14 +52,14 @@ function createFormattedDate(daysFromNow, timeString = "06:00") {
         timeMinutes = parseInt(timeParts[1], 10);
     }
     
-            // Set time to the specified time exactly as specified
-        // This ensures the date stays exactly as specified
+        // Set time to the specified time exactly as specified
+        // This ensures the date stays exactly as specified without timezone shifting
         const year = date.getFullYear();
         const month = date.getMonth();
         const day = date.getDate();
-                const userDate = new Date(year, month, day, timeHours, timeMinutes, 0, 0);
+        const userDate = new Date(Date.UTC(year, month, day, timeHours, timeMinutes, 0, 0));
       
-      return userDate.toISOString();
+        return userDate.toISOString();
 }
 
 // In-memory data storage (replace with database in production)
@@ -129,8 +129,8 @@ function normalizeExistingRunDates() {
                 }
                 
                 // Store the date exactly as entered without timezone conversion
-                // This ensures the date stays exactly as entered
-                const userDate = new Date(year, month, day, timeHours, timeMinutes, 0, 0);
+                // This ensures the date stays exactly as entered without timezone shifting
+                const userDate = new Date(Date.UTC(year, month, day, timeHours, timeMinutes, 0, 0));
                 
                 const isoDate = userDate.toISOString();
                 
@@ -256,9 +256,9 @@ function validateAndNormalizeRunData(runData) {
         const month = parsedDate.getMonth();
         const day = parsedDate.getDate();
         
-        // Create the date exactly as specified by the user
-        // This ensures the date stays exactly as entered
-        const userDate = new Date(year, month, day, timeHours, timeMinutes, 0, 0);
+        // Create the date exactly as specified by the user in UTC
+        // This ensures the date stays exactly as entered without timezone shifting
+        const userDate = new Date(Date.UTC(year, month, day, timeHours, timeMinutes, 0, 0));
         
         normalizedDate = userDate.toISOString();
         
