@@ -741,9 +741,9 @@ app.post('/api/users/create', (req, res) => {
             return res.status(400).json({ success: false, message: 'Missing firstName, lastName or username' });
         }
         const uname = String(username).trim().toLowerCase();
-        if (!/^[a-z0-9_.-]{3,32}$/.test(uname)) {
-            return res.status(400).json({ success: false, message: 'Invalid username format' });
-        }
+        // Username: allow letters, numbers, underscore, dot, hyphen; 3-32 chars
+        const unameOk = /^[a-z0-9_.-]{3,32}$/.test(uname);
+        if (!unameOk) return res.status(400).json({ success: false, message: 'Invalid username format' });
         if (leaderboardUsers.some(u => (u.username || '').toLowerCase() === uname)) {
             return res.status(409).json({ success: false, message: 'Username already taken' });
         }
@@ -763,7 +763,7 @@ app.post('/api/users/create', (req, res) => {
         res.status(201).json({ success: true, data: user, message: 'Account created' });
     } catch (error) {
         console.error('❌ Error creating account:', error);
-        res.status(500).json({ success: false, message: error.message });
+        res.status(500).json({ success: false, message: error.message || 'Internal error' });
     }
 });
 // POST /api/users/register - Mark or create a leaderboard user as registered from the app

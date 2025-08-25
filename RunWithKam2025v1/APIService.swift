@@ -44,7 +44,14 @@ class APIService: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
         let body = CreateAccountRequest(firstName: firstName, lastName: lastName, username: username)
         request.httpBody = try JSONEncoder().encode(body)
         let (data, response) = try await URLSession.shared.data(for: request)
-        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw APIError.serverError }
+        if let http = response as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
+            // Try to decode server error message
+            if let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let msg = dict["message"] as? String {
+                throw NSError(domain: "API", code: http.statusCode, userInfo: [NSLocalizedDescriptionKey: msg])
+            }
+            throw APIError.serverError
+        }
         let decoded = try JSONDecoder().decode(CreateAccountResponse.self, from: data)
         return decoded.data
     }
