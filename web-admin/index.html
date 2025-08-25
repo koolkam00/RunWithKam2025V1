@@ -76,7 +76,7 @@
                     <input type="password" id="password" name="password" required>
                 </div>
                 
-                <button type="button" id="loginButton" class="btn btn-primary" onclick="console.log('Button clicked!'); handleLoginClick();">
+                <button type="button" id="loginButton" class="btn btn-primary" onclick="handleLoginClick()">
                     <i class="fas fa-sign-in-alt"></i>
                     Sign In
                 </button>
@@ -312,13 +312,108 @@
     </div>
 
     <script>
-        // Test if JavaScript is working
+        // Simple working login system
         console.log('🚀 Inline script loaded!');
+        
+        // Test function
         window.testLogin = function() {
             console.log('🧪 Test login function called!');
             alert('JavaScript is working!');
         };
+        
+        // Simple login function
+        window.handleLoginClick = function() {
+            console.log('🔐 Login button clicked!');
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            console.log('Username:', username, 'Password:', password);
+            
+            if (username === 'admin' && password === 'runwithkam2025') {
+                console.log('✅ Login successful!');
+                
+                // Hide login screen
+                document.getElementById('loginScreen').style.display = 'none';
+                
+                // Show dashboard
+                document.getElementById('dashboardScreen').style.display = 'block';
+                
+                // Load some basic data
+                loadBasicData();
+                
+            } else {
+                console.log('❌ Login failed!');
+                alert('Invalid username or password. Use: admin / runwithkam2025');
+            }
+        };
+        
+        // Load basic data
+        function loadBasicData() {
+            console.log('📊 Loading basic data...');
+            
+            // Load runs
+            fetch('http://localhost:3000/api/runs')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('✅ Runs loaded:', data);
+                    if (data.success) {
+                        displayRuns(data.data);
+                    }
+                })
+                .catch(error => {
+                    console.error('❌ Error loading runs:', error);
+                });
+            
+            // Load leaderboard
+            fetch('http://localhost:3000/api/leaderboard')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('✅ Leaderboard loaded:', data);
+                    if (data.success) {
+                        displayLeaderboard(data.data);
+                    }
+                })
+                .catch(error => {
+                    console.error('❌ Error loading leaderboard:', error);
+                });
+        }
+        
+        // Display runs
+        function displayRuns(runs) {
+            const runsList = document.getElementById('runsList');
+            if (runsList && runs.length > 0) {
+                runsList.innerHTML = runs.map(run => `
+                    <div style="border: 1px solid #ccc; padding: 10px; margin: 5px; border-radius: 5px;">
+                        <strong>${run.location}</strong> - ${run.time}<br>
+                        Date: ${new Date(run.date).toLocaleDateString()}<br>
+                        Pace: ${run.pace}
+                    </div>
+                `).join('');
+            }
+        }
+        
+        // Display leaderboard
+        function displayLeaderboard(users) {
+            const leaderboardContainer = document.getElementById('leaderboardContainer');
+            if (leaderboardContainer && users.length > 0) {
+                leaderboardContainer.innerHTML = users.map(user => `
+                    <div style="border: 1px solid #ccc; padding: 10px; margin: 5px; border-radius: 5px;">
+                        <strong>${user.firstName} ${user.lastName}</strong><br>
+                        Runs: ${user.totalRuns} | Miles: ${user.totalMiles}
+                    </div>
+                `).join('');
+            }
+        }
+        
+        // Clear login function
+        window.clearLogin = function() {
+            console.log('🧹 Clearing login...');
+            localStorage.removeItem('adminLoggedIn');
+            location.reload();
+        };
+        
+        console.log('✅ All functions loaded!');
     </script>
-    <script src="script.js?v=2"></script>
 </body>
 </html>
