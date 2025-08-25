@@ -293,7 +293,7 @@ struct RunCardView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(run.time)
+                    Text(formatTime12h(run.time))
                         .font(.headline)
                         .foregroundColor(.blue)
                     
@@ -426,6 +426,16 @@ struct RunCardView: View {
             }
             await MainActor.run { loadingRSVP = false }
         }
+    }
+
+    // MARK: - Helpers
+    private func formatTime12h(_ time: String) -> String {
+        let parts = time.split(separator: ":")
+        guard parts.count == 2, let h = Int(parts[0]), let m = Int(parts[1]) else { return time }
+        let ampm = h >= 12 ? "PM" : "AM"
+        var hour12 = h % 12
+        if hour12 == 0 { hour12 = 12 }
+        return String(format: "%d:%02d %@", hour12, m, ampm)
     }
 }
 
