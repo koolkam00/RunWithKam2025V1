@@ -396,6 +396,12 @@ function displayLeaderboard(users) {
                             <span><i class="fas fa-running"></i> ${user.totalRuns} runs</span>
                             <span><i class="fas fa-route"></i> ${user.totalMiles} miles</span>
                         </div>
+                        <div class="user-increment" style="margin-top:8px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                            <button class="btn btn-secondary btn-sm" data-action="inc-run" data-id="${user.id}">+ Run</button>
+                            <button class="btn btn-secondary btn-sm" data-action="inc-mile" data-id="${user.id}">+ 1 Mile</button>
+                            <input type="number" min="0.1" step="0.1" placeholder="Miles" data-miles-input="${user.id}" style="width:90px; padding:6px; border:1px solid #ddd; border-radius:6px;">
+                            <button class="btn btn-secondary btn-sm" data-action="inc-mile-custom" data-id="${user.id}">+ Miles</button>
+                        </div>
                     </div>
                 </div>
                 <div class="leaderboard-actions">
@@ -407,6 +413,20 @@ function displayLeaderboard(users) {
         // Hook up action buttons
         leaderboardContainer.querySelectorAll('[data-action="edit-user"]').forEach(btn => btn.addEventListener('click', () => openEditUser(btn.getAttribute('data-id'))));
         leaderboardContainer.querySelectorAll('[data-action="delete-user"]').forEach(btn => btn.addEventListener('click', () => deleteUser(btn.getAttribute('data-id'))));
+        // Increment actions
+        leaderboardContainer.querySelectorAll('[data-action="inc-run"]').forEach(btn => btn.addEventListener('click', () => incrementUserRuns(btn.getAttribute('data-id'), 1)));
+        leaderboardContainer.querySelectorAll('[data-action="inc-mile"]').forEach(btn => btn.addEventListener('click', () => incrementUserMiles(btn.getAttribute('data-id'), 1)));
+        leaderboardContainer.querySelectorAll('[data-action="inc-mile-custom"]').forEach(btn => btn.addEventListener('click', () => {
+            const userId = btn.getAttribute('data-id');
+            const input = leaderboardContainer.querySelector(`[data-miles-input="${userId}"]`);
+            const val = parseFloat((input && input.value) || '0');
+            if (!isNaN(val) && val > 0) {
+                incrementUserMiles(userId, val);
+                input.value = '';
+            } else {
+                alert('Enter a valid miles amount (> 0).');
+            }
+        }));
         console.log(`✅ Displayed ${users.length} leaderboard users in the UI`);
     } else if (leaderboardContainer) {
         leaderboardContainer.innerHTML = '<p>No users in leaderboard yet.</p>';
@@ -660,6 +680,48 @@ function deleteUser(userId) {
       .then(r => { if (!r.ok) throw new Error('Delete failed'); return r.json(); })
       .then(() => { loadBasicData(); })
       .catch(err => { console.error(err); alert('Failed to delete user'); });
+}
+
+function incrementUserRuns(userId, delta) {
+    const user = currentLeaderboard.find(u => u.id === userId);
+    if (!user) return;
+    const payload = {
+        firstName: user.firstName,
+        lastName: user.lastName,
+        totalRuns: (user.totalRuns || 0) + delta,
+        totalMiles: user.totalMiles,
+        appUserId: user.appUserId,
+        isRegistered: user.isRegistered
+    };
+    fetch(`http://localhost:3000/api/leaderboard/${userId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    })
+    .then(r => { if (!r.ok) throw new Error('Update failed'); return r.json(); })
+    .then(() => { loadBasicData(); })
+    .catch(err => { console.error(err); alert('Failed to update runs'); });
+}
+
+function incrementUserMiles(userId, deltaMiles) {
+    const user = currentLeaderboard.find(u => u.id === userId);
+    if (!user) return;
+    const payload = {
+        firstName: user.firstName,
+        lastName: user.lastName,
+        totalRuns: user.totalRuns,
+        totalMiles: parseFloat(((user.totalMiles || 0) + deltaMiles).toFixed(2)),
+        appUserId: user.appUserId,
+        isRegistered: user.isRegistered
+    };
+    fetch(`http://localhost:3000/api/leaderboard/${userId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    })
+    .then(r => { if (!r.ok) throw new Error('Update failed'); return r.json(); })
+    .then(() => { loadBasicData(); })
+    .catch(err => { console.error(err); alert('Failed to update miles'); });
 }
 
 function hideLeaderboardModal() {
