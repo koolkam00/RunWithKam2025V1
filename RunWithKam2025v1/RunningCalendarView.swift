@@ -286,6 +286,7 @@ struct RunCardView: View {
     @State private var loadingRSVP = false
     @State private var error: String?
     @State private var hasResponded = false
+    @State private var myStatus: String? = nil
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -337,12 +338,24 @@ struct RunCardView: View {
             }
 
             // RSVP lists
-            if !rsvpsYes.isEmpty {
+            if !rsvpsYes.isEmpty || (hasResponded && myStatus == "no") {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Going: " + rsvpsYes.map { "\($0.firstName) \($0.lastName)" }.joined(separator: ", "))
-                        .font(.caption)
-                        .foregroundColor(.green)
+                    if !rsvpsYes.isEmpty {
+                        Text("Going: " + rsvpsYes.map { "\($0.firstName) \($0.lastName)" }.joined(separator: ", "))
+                            .font(.caption)
+                            .foregroundColor(.green)
+                    }
+                    if hasResponded && myStatus == "no" {
+                        Text("You marked Not Coming")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
                 }
+            }
+            if let error = error, !error.isEmpty {
+                Text(error)
+                    .font(.caption2)
+                    .foregroundColor(.red)
             }
         }
         .padding()
@@ -363,10 +376,16 @@ struct RunCardView: View {
                 rsvpsNo = no
                 // detect if current user has already responded
                 let uname = username.lowercased()
-                hasResponded = (detail.rsvps ?? []).contains(where: { r in
+                if let mine = (detail.rsvps ?? []).first(where: { r in
                     if let ru = r.username?.lowercased(), !ru.isEmpty, !uname.isEmpty { return ru == uname }
                     return r.firstName.caseInsensitiveCompare(firstName) == .orderedSame && r.lastName.caseInsensitiveCompare(lastName) == .orderedSame
-                })
+                }) {
+                    hasResponded = true
+                    myStatus = mine.status
+                } else {
+                    hasResponded = false
+                    myStatus = nil
+                }
             }
         } catch {
             await MainActor.run { self.error = error.localizedDescription }
@@ -377,9 +396,20 @@ struct RunCardView: View {
         loadingRSVP = true
         Task {
             do {
+                // Optimistic UI update
+                await MainActor.run {
+                    hasResponded = true
+                    myStatus = status
+                    if status == "yes" {
+                        // append if not present
+                        if !rsvpsYes.contains(where: { $0.firstName.caseInsensitiveCompare(firstName) == .orderedSame && $0.lastName.caseInsensitiveCompare(lastName) == .orderedSame }) {
+                            let temp = APIService.RSVP(id: UUID().uuidString, runId: run.id, firstName: firstName, lastName: lastName, username: username.isEmpty ? nil : username, status: "yes", timestamp: ISO8601DateFormatter().string(from: Date()))
+                            rsvpsYes.append(temp)
+                        }
+                    }
+                }
                 _ = try await APIService.shared.sendRSVP(runId: run.id, firstName: firstName, lastName: lastName, username: username.isEmpty ? nil : username, status: status)
                 await loadRunDetail()
-                await MainActor.run { hasResponded = true }
             } catch {
                 await MainActor.run { self.error = error.localizedDescription }
             }
