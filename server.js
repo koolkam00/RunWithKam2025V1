@@ -13,8 +13,21 @@ app.use(cors());
 app.use(morgan('combined'));
 app.use(express.json());
 
-// Serve static files from web-admin directory
-app.use(express.static('web-admin'));
+// Serve static files from web-admin directory with cache control
+app.use(express.static('web-admin', {
+    setHeaders: (res, path) => {
+        if (path.endsWith('.css')) {
+            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+            res.setHeader('Pragma', 'no-cache');
+            res.setHeader('Expires', '0');
+        }
+        if (path.endsWith('.js')) {
+            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+            res.setHeader('Pragma', 'no-cache');
+            res.setHeader('Expires', '0');
+        }
+    }
+}));
 
 // Add cache control headers to prevent caching issues
 app.use((req, res, next) => {
