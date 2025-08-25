@@ -409,6 +409,34 @@ class APIService: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
         return formatter.string(from: date)
     }
     
+    // MARK: - Leaderboard Methods
+    func fetchLeaderboard() async throws -> [LeaderboardUser] {
+        guard let url = URL(string: "\(baseURL)/leaderboard") else {
+            throw APIError.invalidURL
+        }
+        
+        var request = URLRequest(url: url)
+        request.setValue("no-cache", forHTTPHeaderField: "Cache-Control")
+        request.setValue("no-cache", forHTTPHeaderField: "Pragma")
+        request.setValue("0", forHTTPHeaderField: "Expires")
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse,
+              httpResponse.statusCode == 200 else {
+            throw APIError.serverError
+        }
+        
+        do {
+            let leaderboardResponse = try JSONDecoder().decode(LeaderboardResponse.self, from: data)
+            print("🏆 iOS App: Successfully fetched leaderboard with \(leaderboardResponse.data.count) users")
+            return leaderboardResponse.data
+        } catch {
+            print("❌ iOS App: Failed to decode leaderboard: \(error)")
+            throw APIError.decodingError
+        }
+    }
+    
     // MARK: - Test Notification (for debugging)
     func testNotification() {
         let content = UNMutableNotificationContent()

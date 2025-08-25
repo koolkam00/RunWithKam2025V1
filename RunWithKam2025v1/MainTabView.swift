@@ -15,6 +15,13 @@ struct MainTabView: View {
                         Text("Request Run")
                     }
                 
+                // Leaderboard Tab
+                LeaderboardView()
+                    .tabItem {
+                        Image(systemName: "trophy")
+                        Text("Leaderboard")
+                    }
+                
                 // Running Calendar Tab
                 RunningCalendarView()
                     .tabItem {

@@ -104,6 +104,18 @@
                 <h3>🔔 Recent Notifications</h3>
                 <div id="notificationsContainer" class="notifications-list"></div>
             </div>
+            
+            <!-- Leaderboard Section -->
+            <div class="leaderboard-section">
+                <h3>🏆 Leaderboard Management</h3>
+                <div class="leaderboard-controls">
+                    <button id="addUserBtn" class="btn btn-primary">Add New User</button>
+                    <button id="refreshLeaderboardBtn" class="btn btn-secondary">Refresh</button>
+                </div>
+                <div id="leaderboardContainer" class="leaderboard-list">
+                    <!-- Leaderboard will be populated here -->
+                </div>
+            </div>
         </main>
     </div>
 
@@ -195,6 +207,52 @@
                     Delete
                 </button>
             </div>
+        </div>
+    </div>
+    
+    <!-- Leaderboard User Modal -->
+    <div id="leaderboardModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="leaderboardModalTitle">Add New User</h3>
+                <button id="closeLeaderboardModal" class="btn btn-icon">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <form id="leaderboardForm" class="leaderboard-form">
+                <div class="form-row">
+                    <div class="input-group">
+                        <label for="userFirstName">First Name</label>
+                        <input type="text" id="userFirstName" name="userFirstName" placeholder="e.g., John" required>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="userLastName">Last Name</label>
+                        <input type="text" id="userLastName" name="userLastName" placeholder="e.g., Smith" required>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="input-group">
+                        <label for="userTotalRuns">Total Runs</label>
+                        <input type="number" id="userTotalRuns" name="userTotalRuns" placeholder="0" min="0" required>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="userTotalMiles">Total Miles</label>
+                        <input type="number" id="userTotalMiles" name="userTotalMiles" placeholder="0.0" min="0" step="0.1" required>
+                    </div>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" id="cancelLeaderboard" class="btn btn-secondary">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i>
+                        Save User
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 

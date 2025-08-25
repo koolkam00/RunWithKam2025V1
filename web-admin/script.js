@@ -11,7 +11,10 @@ let currentDate = new Date();
 let selectedDate = new Date();
 let runs = [];
 let notifications = [];
+let leaderboardUsers = [];
 let editingRunId = null;
+let editingUserId = null;
+let isEditingUser = false;
 
 // DOM elements
 const loginScreen = document.getElementById('loginScreen');
@@ -26,6 +29,10 @@ const runModal = document.getElementById('runModal');
 const runForm = document.getElementById('runForm');
 const modalTitle = document.getElementById('modalTitle');
 const deleteModal = document.getElementById('deleteModal');
+const leaderboardModal = document.getElementById('leaderboardModal');
+const leaderboardForm = document.getElementById('leaderboardForm');
+const leaderboardModalTitle = document.getElementById('leaderboardModalTitle');
+const leaderboardContainer = document.getElementById('leaderboardContainer');
 
 // Authentication
 const ADMIN_CREDENTIALS = {
@@ -59,6 +66,10 @@ function setupEventListeners() {
     document.getElementById('logoutBtn').addEventListener('click', handleLogout);
     document.getElementById('prevMonth').addEventListener('click', () => navigateMonth(-1));
     document.getElementById('nextMonth').addEventListener('click', () => navigateMonth(1));
+    
+    // Leaderboard buttons
+    document.getElementById('addUserBtn').addEventListener('click', showAddUserModal);
+    document.getElementById('refreshLeaderboardBtn').addEventListener('click', loadLeaderboardFromAPI);
     
     // Debug button
     if (document.getElementById('debugBtn')) {
@@ -95,8 +106,15 @@ function setupEventListeners() {
     document.getElementById('cancelDelete').addEventListener('click', hideDeleteModal);
     document.getElementById('confirmDelete').addEventListener('click', confirmDeleteRun);
     
+    // Leaderboard modal buttons
+    document.getElementById('closeLeaderboardModal').addEventListener('click', hideLeaderboardModal);
+    document.getElementById('cancelLeaderboard').addEventListener('click', hideLeaderboardModal);
+    
     // Run form
     runForm.addEventListener('submit', handleRunSubmit);
+    
+    // Leaderboard form
+    leaderboardForm.addEventListener('submit', handleLeaderboardSubmit);
     
     // Close modals when clicking outside
     window.addEventListener('click', function(event) {
@@ -159,8 +177,10 @@ function showDashboard() {
     loginScreen.classList.remove("active");
     dashboardScreen.classList.add("active");
     
-    // Load notifications
+    // Load data
+    loadRunsFromAPI();
     loadNotificationsFromAPI();
+    loadLeaderboardFromAPI();
     
     // Start real-time updates
     initializeRealTimeUpdates();
@@ -1131,5 +1151,180 @@ function testDateConversion() {
         estDisplay: utcDate3.toLocaleDateString('en-US', { timeZone: 'America/New_York' }),
         utcDisplay: utcDate3.toLocaleDateString('en-US', { timeZone: 'UTC' })
     });
+}
+
+// Leaderboard Functions
+async function loadLeaderboardFromAPI() {
+    try {
+        const response = await fetch('http://localhost:3000/api/leaderboard');
+        if (!response.ok) {
+            throw new Error(`Failed to load leaderboard: ${response.statusText}`);
+        }
+        
+        const result = await response.json();
+        leaderboardUsers = result.data || [];
+        
+        // Sort by total miles (descending)
+        leaderboardUsers.sort((a, b) => b.totalMiles - a.totalMiles);
+        
+        // Add rank to each user
+        leaderboardUsers.forEach((user, index) => {
+            user.rank = index + 1;
+        });
+        
+        renderLeaderboard();
+        console.log('🏆 Leaderboard loaded:', leaderboardUsers.length, 'users');
+    } catch (error) {
+        console.error('❌ Failed to load leaderboard:', error);
+        showUpdateNotification('Failed to load leaderboard', 'error');
+    }
+}
+
+function renderLeaderboard() {
+    if (!leaderboardContainer) return;
+    
+    if (leaderboardUsers.length === 0) {
+        leaderboardContainer.innerHTML = '<p style="color: #6c757d; font-style: italic;">No users in leaderboard yet</p>';
+        return;
+    }
+    
+    leaderboardContainer.innerHTML = leaderboardUsers.map(user => `
+        <div class="leaderboard-item">
+            <div class="leaderboard-rank">
+                <div class="rank-number rank-${user.rank <= 3 ? user.rank : 'other'}">${user.rank}</div>
+                <div class="user-info">
+                    <div class="user-name">${user.firstName} ${user.lastName}</div>
+                    <div class="user-stats">
+                        <span><i class="fas fa-running"></i> ${user.totalRuns} runs</span>
+                        <span><i class="fas fa-map"></i> ${user.totalMiles.toFixed(1)} miles</span>
+                    </div>
+                </div>
+            </div>
+            <div class="leaderboard-actions">
+                <button class="btn-edit" onclick="editUser('${user.id}')">
+                    <i class="fas fa-edit"></i> Edit
+                </button>
+                <button class="btn-delete" onclick="deleteUser('${user.id}')">
+                    <i class="fas fa-trash"></i> Delete
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function showAddUserModal() {
+    editingUserId = null;
+    isEditingUser = false;
+    leaderboardModalTitle.textContent = 'Add New User';
+    
+    // Clear form
+    leaderboardForm.reset();
+    
+    // Show modal
+    leaderboardModal.classList.remove('hidden');
+}
+
+function editUser(userId) {
+    const user = leaderboardUsers.find(u => u.id === userId);
+    if (!user) return;
+    
+    editingUserId = userId;
+    isEditingUser = true;
+    leaderboardModalTitle.textContent = 'Edit User';
+    
+    // Populate form
+    document.getElementById('userFirstName').value = user.firstName;
+    document.getElementById('userLastName').value = user.lastName;
+    document.getElementById('userTotalRuns').value = user.totalRuns;
+    document.getElementById('userTotalMiles').value = user.totalMiles;
+    
+    // Show modal
+    leaderboardModal.classList.remove('hidden');
+}
+
+function hideLeaderboardModal() {
+    leaderboardModal.classList.add('hidden');
+    editingUserId = null;
+    isEditingUser = false;
+}
+
+async function handleLeaderboardSubmit(event) {
+    event.preventDefault();
+    
+    const formData = new FormData(leaderboardForm);
+    const userData = {
+        firstName: formData.get('userFirstName'),
+        lastName: formData.get('userLastName'),
+        totalRuns: parseInt(formData.get('userTotalRuns')),
+        totalMiles: parseFloat(formData.get('userTotalMiles'))
+    };
+    
+    try {
+        if (isEditingUser) {
+            await updateUserInAPI(editingUserId, userData);
+            showUpdateNotification('User updated successfully!', 'success');
+        } else {
+            await createUserInAPI(userData);
+            showUpdateNotification('User added successfully!', 'success');
+        }
+        
+        hideLeaderboardModal();
+        loadLeaderboardFromAPI();
+    } catch (error) {
+        console.error('❌ Failed to save user:', error);
+        showUpdateNotification('Failed to save user', 'error');
+    }
+}
+
+async function createUserInAPI(userData) {
+    const response = await fetch('http://localhost:3000/api/leaderboard', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(userData)
+    });
+    
+    if (!response.ok) {
+        throw new Error(`Failed to create user: ${response.statusText}`);
+    }
+    
+    const result = await response.json();
+    return result.data;
+}
+
+async function updateUserInAPI(userId, userData) {
+    const response = await fetch(`http://localhost:3000/api/leaderboard/${userId}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(userData)
+    });
+    
+    if (!response.ok) {
+        throw new Error(`Failed to update user: ${response.statusText}`);
+    }
+    
+    const result = await response.json();
+    return result.data;
+}
+
+async function deleteUser(userId) {
+    if (!confirm('Are you sure you want to delete this user?')) {
+        return;
+    }
+    
+    try {
+        await fetch(`http://localhost:3000/api/leaderboard/${userId}`, {
+            method: 'DELETE'
+        });
+        
+        showUpdateNotification('User deleted successfully!', 'success');
+        loadLeaderboardFromAPI();
+    } catch (error) {
+        console.error('❌ Failed to delete user:', error);
+        showUpdateNotification('Failed to delete user', 'error');
+    }
 }
 

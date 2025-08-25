@@ -36,6 +36,9 @@ let runs = [];
 // In-memory notification storage (replace with database in production)
 let notifications = [];
 
+// In-memory leaderboard storage (replace with database in production)
+let leaderboardUsers = [];
+
 // Helper function to send notifications to all users
 function sendRunNotification(run) {
     const notification = {
@@ -101,12 +104,40 @@ function initializeSampleData() {
         }
     ];
     
+    // Initialize sample leaderboard users
+    leaderboardUsers = [
+        {
+            id: uuidv4(),
+            firstName: 'John',
+            lastName: 'Smith',
+            totalRuns: 15,
+            totalMiles: 45.5,
+            lastUpdated: new Date().toISOString()
+        },
+        {
+            id: uuidv4(),
+            firstName: 'Sarah',
+            lastName: 'Johnson',
+            totalRuns: 12,
+            totalMiles: 38.2,
+            lastUpdated: new Date().toISOString()
+        },
+        {
+            id: uuidv4(),
+            firstName: 'Mike',
+            lastName: 'Davis',
+            totalRuns: 8,
+            totalMiles: 25.0,
+            lastUpdated: new Date().toISOString()
+        }
+    ];
+    
     // Send notifications for sample data
     runs.forEach(run => {
         sendRunNotification(run);
     });
     
-    console.log('📊 Sample data initialized with notifications');
+    console.log(`📊 Sample data initialized: ${runs.length} runs, ${notifications.length} notifications, ${leaderboardUsers.length} leaderboard users`);
 }
 
 // Helper function to validate UUID format
@@ -490,6 +521,167 @@ app.put('/api/notifications/:id/read', (req, res) => {
     }
 });
 
+// Leaderboard API Endpoints
+
+// GET /api/leaderboard - Get all leaderboard users
+app.get('/api/leaderboard', (req, res) => {
+    try {
+        // Sort users by total miles (descending)
+        const sortedUsers = [...leaderboardUsers].sort((a, b) => b.totalMiles - a.totalMiles);
+        
+        // Add rank to each user
+        sortedUsers.forEach((user, index) => {
+            user.rank = index + 1;
+        });
+        
+        res.json({
+            success: true,
+            data: sortedUsers,
+            count: sortedUsers.length,
+            message: 'Leaderboard retrieved successfully',
+            timestamp: new Date().toISOString(),
+            version: '1.0.0'
+        });
+    } catch (error) {
+        console.error('❌ Error getting leaderboard:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message,
+            timestamp: new Date().toISOString(),
+            version: '1.0.0'
+        });
+    }
+});
+
+// POST /api/leaderboard - Create new leaderboard user
+app.post('/api/leaderboard', (req, res) => {
+    try {
+        const { firstName, lastName, totalRuns, totalMiles } = req.body;
+        
+        // Validate required fields
+        if (!firstName || !lastName || totalRuns === undefined || totalMiles === undefined) {
+            return res.status(400).json({
+                success: false,
+                error: 'Missing required fields: firstName, lastName, totalRuns, totalMiles',
+                timestamp: new Date().toISOString(),
+                version: '1.0.0'
+            });
+        }
+        
+        const newUser = {
+            id: uuidv4(),
+            firstName: firstName.trim(),
+            lastName: lastName.trim(),
+            totalRuns: parseInt(totalRuns) || 0,
+            totalMiles: parseFloat(totalMiles) || 0,
+            lastUpdated: new Date().toISOString()
+        };
+        
+        leaderboardUsers.push(newUser);
+        
+        console.log(`🏆 New leaderboard user added: ${newUser.firstName} ${newUser.lastName}`);
+        
+        res.status(201).json({
+            success: true,
+            data: newUser,
+            message: 'User added to leaderboard successfully',
+            timestamp: new Date().toISOString(),
+            version: '1.0.0'
+        });
+    } catch (error) {
+        console.error('❌ Error creating leaderboard user:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message,
+            timestamp: new Date().toISOString(),
+            version: '1.0.0'
+        });
+    }
+});
+
+// PUT /api/leaderboard/:id - Update leaderboard user
+app.put('/api/leaderboard/:id', (req, res) => {
+    try {
+        const userId = req.params.id;
+        const { firstName, lastName, totalRuns, totalMiles } = req.body;
+        
+        const userIndex = leaderboardUsers.findIndex(u => u.id === userId);
+        if (userIndex === -1) {
+            return res.status(404).json({
+                success: false,
+                error: 'User not found',
+                timestamp: new Date().toISOString(),
+                version: '1.0.0'
+            });
+        }
+        
+        // Update user data
+        leaderboardUsers[userIndex] = {
+            ...leaderboardUsers[userIndex],
+            firstName: firstName.trim(),
+            lastName: lastName.trim(),
+            totalRuns: parseInt(totalRuns) || 0,
+            totalMiles: parseFloat(totalMiles) || 0,
+            lastUpdated: new Date().toISOString()
+        };
+        
+        console.log(`🏆 Leaderboard user updated: ${leaderboardUsers[userIndex].firstName} ${leaderboardUsers[userIndex].lastName}`);
+        
+        res.json({
+            success: true,
+            data: leaderboardUsers[userIndex],
+            message: 'User updated successfully',
+            timestamp: new Date().toISOString(),
+            version: '1.0.0'
+        });
+    } catch (error) {
+        console.error('❌ Error updating leaderboard user:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message,
+            timestamp: new Date().toISOString(),
+            version: '1.0.0'
+        });
+    }
+});
+
+// DELETE /api/leaderboard/:id - Delete leaderboard user
+app.delete('/api/leaderboard/:id', (req, res) => {
+    try {
+        const userId = req.params.id;
+        const userIndex = leaderboardUsers.findIndex(u => u.id === userId);
+        
+        if (userIndex === -1) {
+            return res.status(404).json({
+                success: false,
+                error: 'User not found',
+                timestamp: new Date().toISOString(),
+                version: '1.0.0'
+        });
+        }
+        
+        const deletedUser = leaderboardUsers.splice(userIndex, 1)[0];
+        
+        console.log(`🏆 Leaderboard user deleted: ${deletedUser.firstName} ${deletedUser.lastName}`);
+        
+        res.json({
+            success: true,
+            data: deletedUser,
+            message: 'User deleted successfully',
+            timestamp: new Date().toISOString(),
+            version: '1.0.0'
+        });
+    } catch (error) {
+        console.error('❌ Error deleting leaderboard user:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message,
+            timestamp: new Date().toISOString(),
+            version: '1.0.0'
+        });
+    }
+});
+
 // Root endpoint
 app.get('/', (req, res) => {
     res.json({
@@ -500,6 +692,7 @@ app.get('/', (req, res) => {
                     endpoints: {
             runs: '/api/runs',
             notifications: '/api/notifications',
+            leaderboard: '/api/leaderboard',
             health: '/api/health'
         }
         },
