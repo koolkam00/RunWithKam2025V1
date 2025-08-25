@@ -19,7 +19,12 @@ if (USE_DB) {
 }
 
 // Middleware
-app.use(helmet());
+app.use(helmet({
+    // Allow loading fonts/CSS from CDNs used by the admin UI
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+    // Disable COEP to avoid blocking cross-origin resources
+    crossOriginEmbedderPolicy: false
+}));
 app.use(cors());
 app.use(morgan('combined'));
 app.use(express.json());
