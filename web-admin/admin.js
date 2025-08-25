@@ -39,6 +39,13 @@ function setupLogin() {
     if (loginBtn) {
         loginBtn.onclick = handleLoginClick;
     }
+    // Allow quick access with URL flag ?autologin=1
+    try {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('autologin') === '1') {
+            localStorage.setItem('adminLoggedIn', 'true');
+        }
+    } catch (_) {}
     const isLoggedIn = localStorage.getItem('adminLoggedIn') === 'true';
     if (isLoggedIn) {
         showScreen('dashboardScreen');
