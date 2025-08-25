@@ -285,6 +285,7 @@ struct RunCardView: View {
     @State private var rsvpsNo: [APIService.RSVP] = []
     @State private var loadingRSVP = false
     @State private var error: String?
+    @State private var hasResponded = false
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -316,36 +317,31 @@ struct RunCardView: View {
             }
 
             // RSVP actions
-            HStack(spacing: 10) {
-                Button(action: { submitRSVP(status: "yes") }) {
-                    Label("RSVP Yes", systemImage: "hand.thumbsup.fill")
+            if !hasResponded {
+                HStack(spacing: 10) {
+                    Button(action: { submitRSVP(status: "yes") }) {
+                        Text("Coming")
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.green)
+                    .disabled(loadingRSVP)
+                    
+                    Button(action: { submitRSVP(status: "no") }) {
+                        Text("Not Coming")
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(.red)
+                    .disabled(loadingRSVP)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(.green)
-                .disabled(loadingRSVP)
-                
-                Button(action: { submitRSVP(status: "no") }) {
-                    Label("RSVP No", systemImage: "hand.thumbsdown.fill")
-                }
-                .buttonStyle(.bordered)
-                .tint(.red)
-                .disabled(loadingRSVP)
+                .padding(.top, 6)
             }
-            .padding(.top, 6)
 
             // RSVP lists
-            if !rsvpsYes.isEmpty || !rsvpsNo.isEmpty {
+            if !rsvpsYes.isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
-                    if !rsvpsYes.isEmpty {
-                        Text("Going: " + rsvpsYes.map { "\($0.firstName) \($0.lastName)" }.joined(separator: ", "))
-                            .font(.caption)
-                            .foregroundColor(.green)
-                    }
-                    if !rsvpsNo.isEmpty {
-                        Text("Not going: " + rsvpsNo.map { "\($0.firstName) \($0.lastName)" }.joined(separator: ", "))
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
-                    }
+                    Text("Going: " + rsvpsYes.map { "\($0.firstName) \($0.lastName)" }.joined(separator: ", "))
+                        .font(.caption)
+                        .foregroundColor(.green)
                 }
             }
         }
@@ -365,6 +361,12 @@ struct RunCardView: View {
             await MainActor.run {
                 rsvpsYes = yes
                 rsvpsNo = no
+                // detect if current user has already responded
+                let uname = username.lowercased()
+                hasResponded = (detail.rsvps ?? []).contains(where: { r in
+                    if let ru = r.username?.lowercased(), !ru.isEmpty, !uname.isEmpty { return ru == uname }
+                    return r.firstName.caseInsensitiveCompare(firstName) == .orderedSame && r.lastName.caseInsensitiveCompare(lastName) == .orderedSame
+                })
             }
         } catch {
             await MainActor.run { self.error = error.localizedDescription }
@@ -377,6 +379,7 @@ struct RunCardView: View {
             do {
                 _ = try await APIService.shared.sendRSVP(runId: run.id, firstName: firstName, lastName: lastName, username: username.isEmpty ? nil : username, status: status)
                 await loadRunDetail()
+                await MainActor.run { hasResponded = true }
             } catch {
                 await MainActor.run { self.error = error.localizedDescription }
             }
