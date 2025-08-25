@@ -91,6 +91,31 @@ function sendRunNotification(run) {
     return notification;
 }
 
+// Function to normalize existing run dates to ISO format
+function normalizeExistingRunDates() {
+    console.log('🔧 Normalizing existing run dates to ISO format...');
+    runs.forEach(run => {
+        try {
+            const parsedDate = new Date(run.date);
+            if (!isNaN(parsedDate.getTime())) {
+                const year = parsedDate.getFullYear();
+                const month = parsedDate.getMonth();
+                const day = parsedDate.getDate();
+                const utcDate = new Date(Date.UTC(year, month, day, 0, 0, 0, 0));
+                const isoDate = utcDate.toISOString();
+                
+                if (run.date !== isoDate) {
+                    console.log(`📅 Normalizing date: ${run.date} -> ${isoDate}`);
+                    run.date = isoDate;
+                }
+            }
+        } catch (error) {
+            console.error(`❌ Error normalizing date for run ${run.id}:`, error);
+        }
+    });
+    console.log('✅ Date normalization complete');
+}
+
 // Initialize with sample data
 function initializeSampleData() {
     runs = [
@@ -176,21 +201,26 @@ function validateAndNormalizeRunData(runData) {
         }
     }
     
-    // Validate date format (no normalization needed - preserve exact date sent)
+    // Validate and normalize date format to ensure consistency
     let normalizedDate;
     try {
-        // Validate the date format without changing it
+        // Parse the date and convert to ISO string for consistency
         const parsedDate = new Date(runData.date);
         if (isNaN(parsedDate.getTime())) {
             throw new Error('Invalid date format');
         }
         
-        // Keep the exact date as sent - no normalization that could shift dates
-        normalizedDate = runData.date;
+        // Convert to ISO string and set to midnight UTC to ensure consistency
+        // This prevents timezone issues and ensures all dates are in the same format
+        const year = parsedDate.getFullYear();
+        const month = parsedDate.getMonth();
+        const day = parsedDate.getDate();
+        const utcDate = new Date(Date.UTC(year, month, day, 0, 0, 0, 0));
+        normalizedDate = utcDate.toISOString();
         
-        console.log(`📅 Date validated (preserved): ${runData.date} -> ${normalizedDate}`);
+        console.log(`📅 Date normalized to ISO: ${runData.date} -> ${normalizedDate}`);
     } catch (error) {
-        throw new Error('Invalid date format. Please use ISO 8601 format (YYYY-MM-DDTHH:mm:ss.sssZ)');
+        throw new Error('Invalid date format. Please use YYYY-MM-DD format (e.g., 2025-08-27)');
     }
     
     // Normalize and validate time
@@ -250,6 +280,21 @@ function validateAndNormalizeRunData(runData) {
 }
 
 // Routes
+
+// GET /api/health - Health check endpoint
+app.get('/api/health', (req, res) => {
+    res.json({
+        success: true,
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        version: '1.0.0',
+        endpoints: {
+            runs: '/api/runs',
+            leaderboard: '/api/leaderboard',
+            notifications: '/api/notifications'
+        }
+    });
+});
 
 // GET /api/runs - Get all runs
 app.get('/api/runs', (req, res) => {
@@ -801,6 +846,9 @@ app.listen(PORT, () => {
     
     // Initialize sample data with notifications
     initializeSampleData();
+    
+    // Normalize any existing run dates to ISO format
+    normalizeExistingRunDates();
     
     console.log(`🚀 Run With Kam API server running on port ${PORT}`);
     console.log(`📱 iOS app can connect to: http://localhost:${PORT}/api`);
