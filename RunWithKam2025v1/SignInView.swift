@@ -12,71 +12,76 @@ struct SignInView: View {
     @State private var alertMessage = ""
     
     var body: some View {
-        NavigationView {
-            VStack(spacing: 30) {
-                Spacer()
-                
-                VStack(spacing: 20) {
-                    Text("Run With Kam")
-                        .font(.largeTitle)
-                        .fontWeight(.bold)
-                        .foregroundColor(.blue)
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 30) {
+                    Spacer(minLength: 20)
                     
-                    Text("Sign in to get started")
-                        .font(.title2)
-                        .foregroundColor(.secondary)
-                }
-                
-                VStack(spacing: 20) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("First Name")
-                            .font(.headline)
-                            .foregroundColor(.primary)
+                    VStack(spacing: 20) {
+                        Text("Run With Kam")
+                            .font(.largeTitle)
+                            .fontWeight(.bold)
+                            .foregroundColor(.blue)
                         
-                        TextField("Enter your first name", text: $firstNameInput)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                            .autocapitalization(.words)
-                            .accessibilityLabel("First name text field")
+                        Text("Sign in to get started")
+                            .font(.title2)
+                            .foregroundColor(.secondary)
                     }
                     
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Last Name")
-                            .font(.headline)
-                            .foregroundColor(.primary)
+                    VStack(spacing: 20) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("First Name")
+                                .font(.headline)
+                                .foregroundColor(.primary)
+                            
+                            TextField("Enter your first name", text: $firstNameInput)
+                                .textFieldStyle(RoundedBorderTextFieldStyle())
+                                .textInputAutocapitalization(.words)
+                                .accessibilityLabel("First name text field")
+                        }
                         
-                        TextField("Enter your last name", text: $lastNameInput)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                            .autocapitalization(.words)
-                            .accessibilityLabel("Last name text field")
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Last Name")
+                                .font(.headline)
+                                .foregroundColor(.primary)
+                            
+                            TextField("Enter your last name", text: $lastNameInput)
+                                .textFieldStyle(RoundedBorderTextFieldStyle())
+                                .textInputAutocapitalization(.words)
+                                .accessibilityLabel("Last name text field")
+                        }
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Username")
+                                .font(.headline)
+                                .foregroundColor(.primary)
+                            TextField("Choose a username", text: $usernameInput)
+                                .textFieldStyle(RoundedBorderTextFieldStyle())
+                                .textInputAutocapitalization(.never)
+                                .autocorrectionDisabled(true)
+                                .accessibilityLabel("Username text field")
+                        }
                     }
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Username")
-                            .font(.headline)
-                            .foregroundColor(.primary)
-                        TextField("Choose a username", text: $usernameInput)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                            .autocapitalization(.none)
-                            .accessibilityLabel("Username text field")
+                    .padding(.horizontal, 40)
+                    
+                    Button(action: continueAction) {
+                        Text("Continue")
+                            .font(.title2)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 50)
+                            .background(Color.blue)
+                            .cornerRadius(25)
                     }
+                    .padding(.horizontal, 40)
+                    .accessibilityLabel("Continue button")
+                    
+                    Spacer(minLength: 20)
                 }
-                .padding(.horizontal, 40)
-                
-                Button(action: continueAction) {
-                    Text("Continue")
-                        .font(.title2)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 50)
-                        .background(Color.blue)
-                        .cornerRadius(25)
-                }
-                .padding(.horizontal, 40)
-                .accessibilityLabel("Continue button")
-                
-                Spacer()
+                .padding(.top, 40)
             }
-            .padding()
+            .scrollDismissesKeyboard(.interactively)
+            .ignoresSafeArea(.keyboard, edges: .bottom)
             .alert("Error", isPresented: $showingAlert) {
                 Button("OK") { }
             } message: {
