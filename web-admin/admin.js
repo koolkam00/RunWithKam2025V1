@@ -1,6 +1,8 @@
 // Global variables
 let currentRuns = [];
 let currentLeaderboard = [];
+let lastSyncTime = null;
+let syncStatus = 'idle';
 
 // Initialize the admin panel
 document.addEventListener('DOMContentLoaded', function() {
@@ -179,11 +181,15 @@ function setupEventListeners() {
 // Load basic data
 function loadBasicData() {
     console.log('📊 Loading basic data...');
+    syncStatus = 'loading';
     
     // Load runs
     fetch('http://localhost:3000/api/runs')
         .then(response => {
             console.log('📡 Runs API response status:', response.status);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
             return response.json();
         })
         .then(data => {
@@ -192,18 +198,24 @@ function loadBasicData() {
                 currentRuns = data.data;
                 displayRuns(data.data);
                 console.log(`📊 Displayed ${data.data.length} runs`);
+                updateSyncStatus('success', 'runs');
             } else {
                 console.error('❌ Runs API returned success: false');
+                updateSyncStatus('error', 'runs');
             }
         })
         .catch(error => {
             console.error('❌ Error loading runs:', error);
+            updateSyncStatus('error', 'runs');
         });
     
     // Load leaderboard
     fetch('http://localhost:3000/api/leaderboard')
         .then(response => {
             console.log('📡 Leaderboard API response status:', response.status);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
             return response.json();
         })
         .then(data => {
@@ -212,13 +224,33 @@ function loadBasicData() {
                 currentLeaderboard = data.data;
                 displayLeaderboard(data.data);
                 console.log(`📊 Displayed ${data.data.length} leaderboard users`);
+                updateSyncStatus('success', 'leaderboard');
             } else {
                 console.error('❌ Leaderboard API returned success: false');
+                updateSyncStatus('error', 'leaderboard');
             }
         })
         .catch(error => {
             console.error('❌ Error loading leaderboard:', error);
+            updateSyncStatus('error', 'leaderboard');
         });
+}
+
+// Update sync status
+function updateSyncStatus(status, dataType) {
+    syncStatus = status;
+    lastSyncTime = new Date();
+    
+    const statusIndicator = document.getElementById('syncStatus');
+    if (statusIndicator) {
+        const statusText = status === 'success' ? '✅ Synced' : 
+                          status === 'loading' ? '🔄 Syncing...' : '❌ Sync Failed';
+        const timeText = lastSyncTime ? ` (${lastSyncTime.toLocaleTimeString()})` : '';
+        statusIndicator.textContent = `${statusText}${timeText}`;
+        statusIndicator.className = `sync-status ${status}`;
+    }
+    
+    console.log(`🔄 Sync status updated: ${status} for ${dataType}`);
 }
 
 // Display runs
@@ -335,6 +367,9 @@ function handleRunSubmit(event) {
         })
         .then(response => {
             console.log('📡 Create run API response status:', response.status);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
             return response.json();
         })
         .then(data => {
@@ -481,6 +516,9 @@ function handleLeaderboardSubmit(event) {
         })
         .then(response => {
             console.log('📡 Create user API response status:', response.status);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
             return response.json();
         })
         .then(data => {
@@ -510,7 +548,7 @@ function debugDateConversion() {
     try {
         const testDate = '2025-09-24';
         const [year, month, day] = testDate.split('-').map(Number);
-        const utcDate = new Date(Date.UTC(year, month - 1, day, 5, 0, 0, 0));
+        const utcDate = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
         
         console.log('🧪 Test for 2025-09-24:');
         console.log('Input:', testDate);
@@ -530,6 +568,8 @@ window.testAdminPanel = function() {
     console.log('🧪 Testing admin panel functions...');
     console.log('Current runs:', currentRuns);
     console.log('Current leaderboard:', currentLeaderboard);
+    console.log('Sync status:', syncStatus);
+    console.log('Last sync time:', lastSyncTime);
     console.log('DOM elements check:');
     console.log('- Add Run button:', document.getElementById('addRunBtn'));
     console.log('- Refresh button:', document.getElementById('refreshBtn'));
