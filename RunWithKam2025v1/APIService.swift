@@ -88,6 +88,9 @@ class APIService: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
     }
 
     struct RunDetailEnvelope: Codable { let success: Bool; let data: RunDetail }
+    struct Comment: Codable, Identifiable { let id: String; let runId: String; let firstName: String; let lastName: String; let username: String?; let text: String; let timestamp: String }
+    struct CommentsEnvelope: Codable { let success: Bool; let data: [Comment] }
+    struct NewCommentRequest: Codable { let firstName: String; let lastName: String; let username: String?; let text: String }
 
     func fetchRunDetail(runId: String) async throws -> RunDetail {
         guard let url = URL(string: "\(baseURL)/runs/\(runId)") else { throw APIError.invalidURL }
@@ -97,6 +100,33 @@ class APIService: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
         guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { throw APIError.serverError }
         let env = try JSONDecoder().decode(RunDetailEnvelope.self, from: data)
         return env.data
+    }
+
+    func fetchComments(runId: String) async throws -> [Comment] {
+        guard let url = URL(string: "\(baseURL)/runs/\(runId)/comments") else { throw APIError.invalidURL }
+        let (data, response) = try await URLSession.shared.data(from: url)
+        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { throw APIError.serverError }
+        let env = try JSONDecoder().decode(CommentsEnvelope.self, from: data)
+        return env.data
+    }
+
+    func postComment(runId: String, firstName: String, lastName: String, username: String?, text: String) async throws -> Comment {
+        guard let url = URL(string: "\(baseURL)/runs/\(runId)/comments") else { throw APIError.invalidURL }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        let body = NewCommentRequest(firstName: firstName, lastName: lastName, username: username, text: text)
+        req.httpBody = try JSONEncoder().encode(body)
+        let (data, response) = try await URLSession.shared.data(for: req)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw APIError.serverError }
+        let env = try JSONDecoder().decode(RSVPEntityEnvelope.self, from: data) // placeholder decode
+        // decode comment directly to avoid struct mismatch
+        if let obj = try? JSONDecoder().decode([String: Comment].self, from: data), let comment = obj["data"] {
+            return comment
+        }
+        struct CommentEnvelope: Codable { let success: Bool; let data: Comment }
+        let ce = try JSONDecoder().decode(CommentEnvelope.self, from: data)
+        return ce.data
     }
 
     struct RSVPRequest: Codable { let firstName: String; let lastName: String; let username: String?; let status: String }

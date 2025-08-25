@@ -10,6 +10,10 @@ struct LeaderboardUser: Codable, Identifiable {
     let totalMiles: Double
     let rank: Int?
     let lastUpdated: String
+    let photoUrl: String?
+    let bio: String?
+    let pace: String?
+    let favoritePier: String?
     
     // Computed property to convert string to Date if needed
     var lastUpdatedDate: Date? {

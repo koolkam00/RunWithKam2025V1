@@ -52,6 +52,7 @@ async function ensureTables() {
             app_user_id TEXT,
             is_registered BOOLEAN NOT NULL DEFAULT false
         );
+        ALTER TABLE leaderboard_users ADD COLUMN IF NOT EXISTS favorite_pier TEXT;
         ALTER TABLE leaderboard_users ADD COLUMN IF NOT EXISTS photo_url TEXT;
         ALTER TABLE leaderboard_users ADD COLUMN IF NOT EXISTS bio TEXT;
         ALTER TABLE leaderboard_users ADD COLUMN IF NOT EXISTS pace TEXT;
@@ -134,7 +135,8 @@ async function dbGetLeaderboard(includeAll) {
     const { rows } = await pool.query(
         `SELECT id, first_name AS "firstName", last_name AS "lastName", username, total_runs AS "totalRuns",
                 total_miles AS "totalMiles", last_updated AS "lastUpdated", app_user_id AS "appUserId",
-                is_registered AS "isRegistered", photo_url AS "photoUrl", bio, pace, preferred_boroughs AS "preferredBoroughs"
+                is_registered AS "isRegistered", photo_url AS "photoUrl", bio, pace,
+                COALESCE(favorite_pier, preferred_boroughs) AS "favoritePier"
          FROM leaderboard_users ${includeAll ? '' : 'WHERE is_registered = true'} ORDER BY total_miles DESC`
     );
     return rows;
@@ -142,9 +144,9 @@ async function dbGetLeaderboard(includeAll) {
 
 async function dbCreateLeaderboardUser(user) {
     await pool.query(
-        `INSERT INTO leaderboard_users (id, first_name, last_name, username, total_runs, total_miles, last_updated, app_user_id, is_registered, photo_url, bio, pace, preferred_boroughs)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
-        [user.id, user.firstName, user.lastName, user.username, user.totalRuns, user.totalMiles, user.lastUpdated, user.appUserId, user.isRegistered, user.photoUrl || null, user.bio || null, user.pace || null, user.preferredBoroughs || null]
+        `INSERT INTO leaderboard_users (id, first_name, last_name, username, total_runs, total_miles, last_updated, app_user_id, is_registered, photo_url, bio, pace, favorite_pier, preferred_boroughs)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
+        [user.id, user.firstName, user.lastName, user.username, user.totalRuns, user.totalMiles, user.lastUpdated, user.appUserId, user.isRegistered, user.photoUrl || null, user.bio || null, user.pace || null, user.favoritePier || null, user.favoritePier || null]
     );
     return user;
 }
@@ -155,14 +157,15 @@ async function dbUpdateLeaderboardUser(userId, patch) {
     await pool.query(
         `UPDATE leaderboard_users SET first_name=$2, last_name=$3, total_runs=$4, total_miles=$5, last_updated=$6,
                 app_user_id=COALESCE($7, app_user_id), is_registered=COALESCE($8, is_registered),
-                photo_url=COALESCE($9, photo_url), bio=COALESCE($10, bio), pace=COALESCE($11, pace), preferred_boroughs=COALESCE($12, preferred_boroughs)
+                photo_url=COALESCE($9, photo_url), bio=COALESCE($10, bio), pace=COALESCE($11, pace),
+                favorite_pier=COALESCE($12, favorite_pier), preferred_boroughs=COALESCE($13, preferred_boroughs)
          WHERE id=$1`,
-        [userId, firstName, lastName, totalRuns, totalMiles, now, appUserId ?? null, typeof isRegistered === 'boolean' ? isRegistered : null, patch.photoUrl ?? null, patch.bio ?? null, patch.pace ?? null, patch.preferredBoroughs ?? null]
+        [userId, firstName, lastName, totalRuns, totalMiles, now, appUserId ?? null, typeof isRegistered === 'boolean' ? isRegistered : null, patch.photoUrl ?? null, patch.bio ?? null, patch.pace ?? null, patch.favoritePier ?? null, patch.favoritePier ?? null]
     );
     const { rows } = await pool.query(
         `SELECT id, first_name AS "firstName", last_name AS "lastName", username, total_runs AS "totalRuns",
                 total_miles AS "totalMiles", last_updated AS "lastUpdated", app_user_id AS "appUserId", is_registered AS "isRegistered",
-                photo_url AS "photoUrl", bio, pace, preferred_boroughs AS "preferredBoroughs"
+                photo_url AS "photoUrl", bio, pace, COALESCE(favorite_pier, preferred_boroughs) AS "favoritePier"
          FROM leaderboard_users WHERE id=$1`,
         [userId]
     );
