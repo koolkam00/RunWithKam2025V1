@@ -94,8 +94,8 @@ function handleLoginClick() {
         console.log('🔐 Login button clicked');
         const btn = document.getElementById('loginButton');
         if (btn) btn.disabled = true;
-        const username = (document.getElementById('username') || {}).value || '';
-        const password = (document.getElementById('password') || {}).value || '';
+        const username = ((document.getElementById('username') || {}).value || '').trim();
+        const password = ((document.getElementById('password') || {}).value || '').trim();
         const errorEl = document.getElementById('loginError');
         console.log('🔎 Credentials entered:', { hasUser: !!username, hasPass: !!password });
         // Simple local auth; can be replaced with API later
@@ -119,6 +119,9 @@ function handleLoginClick() {
         if (btn) btn.disabled = false;
     }
 }
+
+// Expose to global as a final fallback
+window.handleLoginClick = handleLoginClick;
 
 
 // Main initialization function
