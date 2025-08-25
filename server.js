@@ -235,6 +235,7 @@ function initializeSampleData() {
             id: uuidv4(),
             firstName: 'John',
             lastName: 'Smith',
+            username: 'johnsmith',
             totalRuns: 15,
             totalMiles: 45.5,
             lastUpdated: new Date().toISOString(),
@@ -245,6 +246,7 @@ function initializeSampleData() {
             id: uuidv4(),
             firstName: 'Sarah',
             lastName: 'Johnson',
+            username: 'sarahj',
             totalRuns: 12,
             totalMiles: 38.2,
             lastUpdated: new Date().toISOString(),
@@ -255,6 +257,7 @@ function initializeSampleData() {
             id: uuidv4(),
             firstName: 'Mike',
             lastName: 'Davis',
+            username: 'miked',
             totalRuns: 8,
             totalMiles: 25.0,
             lastUpdated: new Date().toISOString(),
@@ -691,6 +694,39 @@ app.put('/api/notifications/:id/read', (req, res) => {
 });
 
 // Leaderboard API Endpoints
+// POST /api/users/create - Create account with firstName, lastName, username
+app.post('/api/users/create', (req, res) => {
+    try {
+        const { firstName, lastName, username } = req.body || {};
+        if (!firstName || !lastName || !username) {
+            return res.status(400).json({ success: false, message: 'Missing firstName, lastName or username' });
+        }
+        const uname = String(username).trim().toLowerCase();
+        if (!/^[a-z0-9_.-]{3,32}$/.test(uname)) {
+            return res.status(400).json({ success: false, message: 'Invalid username format' });
+        }
+        if (leaderboardUsers.some(u => (u.username || '').toLowerCase() === uname)) {
+            return res.status(409).json({ success: false, message: 'Username already taken' });
+        }
+        const user = {
+            id: uuidv4(),
+            firstName: String(firstName).trim(),
+            lastName: String(lastName).trim(),
+            username: uname,
+            totalRuns: 0,
+            totalMiles: 0,
+            lastUpdated: new Date().toISOString(),
+            appUserId: null,
+            isRegistered: true
+        };
+        leaderboardUsers.push(user);
+        console.log(`👤 Account created: ${user.firstName} ${user.lastName} (@${user.username})`);
+        res.status(201).json({ success: true, data: user, message: 'Account created' });
+    } catch (error) {
+        console.error('❌ Error creating account:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
 // POST /api/users/register - Mark or create a leaderboard user as registered from the app
 app.post('/api/users/register', (req, res) => {
     try {
@@ -706,6 +742,7 @@ app.post('/api/users/register', (req, res) => {
                 id: uuidv4(),
                 firstName: (firstName || '').trim(),
                 lastName: (lastName || '').trim(),
+                username: null,
                 totalRuns: 0,
                 totalMiles: 0,
                 lastUpdated: new Date().toISOString(),
