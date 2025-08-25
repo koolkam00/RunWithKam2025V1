@@ -359,12 +359,17 @@ class APIService: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
     
     // MARK: - Start real-time updates
     func startRealTimeUpdates() {
-        // Poll for updates every 10 seconds
-        Timer.scheduledTimer(withTimeInterval: 10.0, repeats: true) { _ in
-            Task {
-                await self.checkForUpdates()
+        // Poll ~60s with jitter (45–75s)
+        func schedule() {
+            let base: Double = 60
+            let jitter: Double = Double.random(in: -15...15)
+            let interval = max(30, base + jitter)
+            Timer.scheduledTimer(withTimeInterval: interval, repeats: false) { _ in
+                Task { await self.checkForUpdates() }
+                schedule()
             }
         }
+        schedule()
     }
     
     // MARK: - Check for updates

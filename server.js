@@ -1,4 +1,5 @@
 const express = require('express');
+const crypto = require('crypto');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
@@ -623,6 +624,14 @@ app.get('/api/runs', async (req, res) => {
         } else {
             list = [...runs].sort((a, b) => new Date(a.date) - new Date(b.date));
         }
+        // ETag support: generate hash of payload
+        const payload = JSON.stringify(list.map(r => ({ id: r.id, date: r.date, time: r.time, location: r.location, pace: r.pace, description: r.description })));
+        const etag = 'W/"' + crypto.createHash('sha1').update(payload).digest('hex') + '"';
+        const ifNone = req.headers['if-none-match'];
+        if (ifNone && ifNone === etag) {
+            return res.status(304).end();
+        }
+        res.setHeader('ETag', etag);
         res.json({ success: true, data: list, count: list.length, message: 'Runs retrieved successfully', timestamp: new Date().toISOString(), version: '1.0.0' });
     } catch (error) {
         console.error('❌ Error in GET /api/runs:', error);
