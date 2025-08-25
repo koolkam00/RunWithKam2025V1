@@ -141,19 +141,35 @@ function setupEventListeners() {
 function handleLogin(event) {
     event.preventDefault();
     
-    const username = document.getElementById('username').value;
-    const password = document.getElementById('password').value;
-    
-    console.log('🔐 Login attempt:', username);
-    
-    if (username === ADMIN_CREDENTIALS.username && password === ADMIN_CREDENTIALS.password) {
-        console.log('✅ Login successful, showing dashboard...');
-        localStorage.setItem('adminLoggedIn', 'true');
-        showDashboard();
-        hideLoginError();
-    } else {
-        console.log('❌ Login failed');
-        showLoginError('Invalid username or password');
+    try {
+        console.log('🔐 Starting login process...');
+        
+        const usernameInput = document.getElementById('username');
+        const passwordInput = document.getElementById('password');
+        
+        if (!usernameInput || !passwordInput) {
+            console.error('❌ Username or password input elements not found');
+            showLoginError('Login form error - please refresh the page');
+            return;
+        }
+        
+        const username = usernameInput.value;
+        const password = passwordInput.value;
+        
+        console.log('🔐 Login attempt:', username);
+        
+        if (username === ADMIN_CREDENTIALS.username && password === ADMIN_CREDENTIALS.password) {
+            console.log('✅ Login successful, showing dashboard...');
+            localStorage.setItem('adminLoggedIn', 'true');
+            showDashboard();
+            hideLoginError();
+        } else {
+            console.log('❌ Login failed - invalid credentials');
+            showLoginError('Invalid username or password');
+        }
+    } catch (error) {
+        console.error('❌ Login error:', error);
+        showLoginError('Login error: ' + error.message);
     }
 }
 
@@ -183,21 +199,37 @@ function showLogin() {
 }
 
 function showDashboard() {
-    console.log('🔄 Showing dashboard...');
-    loginScreen.classList.remove("active");
-    dashboardScreen.classList.add("active");
-    
-    // Setup event listeners for dashboard
-    setupEventListeners();
-    
-    // Load data
-    loadRunsFromAPI();
-    loadNotificationsFromAPI();
-    loadLeaderboardFromAPI();
-    
-    // Start real-time updates
-    initializeRealTimeUpdates();
-    console.log('✅ Dashboard shown successfully');
+    try {
+        console.log('🔄 Showing dashboard...');
+        
+        if (!loginScreen || !dashboardScreen) {
+            console.error('❌ Login or dashboard screen elements not found');
+            return;
+        }
+        
+        loginScreen.classList.remove("active");
+        dashboardScreen.classList.add("active");
+        console.log('✅ Screen classes updated');
+        
+        // Setup event listeners for dashboard
+        console.log('🔧 Setting up dashboard event listeners...');
+        setupEventListeners();
+        
+        // Load data
+        console.log('📊 Loading dashboard data...');
+        loadRunsFromAPI();
+        loadNotificationsFromAPI();
+        loadLeaderboardFromAPI();
+        
+        // Start real-time updates
+        console.log('🔄 Starting real-time updates...');
+        initializeRealTimeUpdates();
+        
+        console.log('✅ Dashboard shown successfully');
+    } catch (error) {
+        console.error('❌ Error showing dashboard:', error);
+        showLoginError('Dashboard error: ' + error.message);
+    }
 }
 
 // Calendar functions
