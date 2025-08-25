@@ -72,6 +72,20 @@ struct RunningCalendarView: View {
                         .background(Color.purple)
                         .cornerRadius(8)
                     }
+                    
+                    Button(action: {
+                        apiService.resetRunCount()
+                    }) {
+                        HStack {
+                            Image(systemName: "arrow.counterclockwise")
+                            Text("Reset Run Count")
+                        }
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(Color.red)
+                        .cornerRadius(8)
+                    }
                 }
                 .padding(.bottom, 10)
                 

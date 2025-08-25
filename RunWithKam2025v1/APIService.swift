@@ -274,6 +274,13 @@ class APIService: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
         print("🔔 iOS App: Last run count: \(lastRunCount)")
         print("🔔 iOS App: Current run count: \(currentRunCount)")
         
+        // If this is the first time running the app, just store the count
+        if lastRunCount == 0 {
+            print("🔔 iOS App: First time running app, storing initial count: \(currentRunCount)")
+            UserDefaults.standard.set(currentRunCount, forKey: "lastRunCount")
+            return
+        }
+        
         // If we have more runs than before, some are new
         if currentRunCount > lastRunCount {
             let newRunsCount = currentRunCount - lastRunCount
@@ -291,6 +298,10 @@ class APIService: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
             }
             
             // Update the stored count
+            UserDefaults.standard.set(currentRunCount, forKey: "lastRunCount")
+        } else if currentRunCount < lastRunCount {
+            // Runs were deleted, update our count
+            print("🔔 iOS App: Runs were deleted, updating count from \(lastRunCount) to \(currentRunCount)")
             UserDefaults.standard.set(currentRunCount, forKey: "lastRunCount")
         } else {
             print("🔔 iOS App: No new runs found")
@@ -477,6 +488,10 @@ class APIService: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
         print("🔔 iOS App: Our delegate reference: \(String(describing: self))")
         print("🔔 iOS App: Are we the delegate? \(currentDelegate === self)")
         
+        // Check run count status
+        let lastRunCount = UserDefaults.standard.integer(forKey: "lastRunCount")
+        print("🔔 iOS App: Stored run count in UserDefaults: \(lastRunCount)")
+        
         // Check pending notifications
         UNUserNotificationCenter.current().getPendingNotificationRequests { requests in
             print("🔔 iOS App: Pending notification requests: \(requests.count)")
@@ -494,6 +509,11 @@ class APIService: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
         }
         
         print("🔔 iOS App: === END DEBUG ===")
+    }
+    
+    func resetRunCount() {
+        UserDefaults.standard.removeObject(forKey: "lastRunCount")
+        print("🔔 iOS App: Run count reset to 0")
     }
 }
 
