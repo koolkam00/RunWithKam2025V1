@@ -616,6 +616,15 @@ class APIService: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
             throw APIError.decodingError
         }
     }
+
+    func fetchLeaderboard(includeAll: Bool) async throws -> [LeaderboardUser] {
+        let urlString = includeAll ? "\(baseURL)/leaderboard?includeAll=1" : "\(baseURL)/leaderboard"
+        guard let url = URL(string: urlString) else { throw APIError.invalidURL }
+        let (data, response) = try await URLSession.shared.data(from: url)
+        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { throw APIError.serverError }
+        let leaderboardResponse = try JSONDecoder().decode(LeaderboardResponse.self, from: data)
+        return leaderboardResponse.data
+    }
     
     // MARK: - Test Notification (for debugging)
     func testNotification() {

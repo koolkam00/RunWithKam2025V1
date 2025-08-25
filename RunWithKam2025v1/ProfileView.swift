@@ -5,7 +5,6 @@ struct ProfileView: View {
     @AppStorage("lastName") private var lastName: String = ""
     @AppStorage("username") private var username: String = ""
 
-    @State private var photoUrl: String = ""
     @State private var bio: String = ""
     @State private var pace: String = ""
     @State private var favoritePier: String = ""
@@ -21,7 +20,6 @@ struct ProfileView: View {
                     TextField("Last Name", text: $lastName)
                     TextField("Username", text: $username)
                         .disabled(true)
-                    TextField("Photo URL", text: $photoUrl)
                     TextField("Bio", text: $bio)
                     TextField("Pace (e.g. 8:30/mile)", text: $pace)
                     TextField("Favorite Pier", text: $favoritePier)
@@ -54,9 +52,33 @@ struct ProfileView: View {
     private func saveProfile() {
         guard !firstName.isEmpty, !lastName.isEmpty else { message = "First and last name required"; return }
         isSaving = true
-        // No throwing work here yet; update message and end
-        self.message = "Saved locally. Server update pending ID resolution."
-        self.isSaving = false
+        Task {
+            defer { isSaving = false }
+            do {
+                // Find userId by loading full leaderboard (includeAll) and matching username
+                let users = try await APIService.shared.fetchLeaderboard(includeAll: true)
+                if let me = users.first(where: { ($0.username ?? "").lowercased() == username.lowercased() }) {
+                    _ = try await APIService.shared.updateLeaderboardUser(
+                        userId: me.id,
+                        firstName: firstName,
+                        lastName: lastName,
+                        totalRuns: me.totalRuns,
+                        totalMiles: me.totalMiles,
+                        appUserId: nil,
+                        isRegistered: true,
+                        photoUrl: nil,
+                        bio: bio,
+                        pace: pace,
+                        favoritePier: favoritePier
+                    )
+                    message = "Profile saved."
+                } else {
+                    message = "Could not find your profile. Make sure you created an account first."
+                }
+            } catch {
+                message = error.localizedDescription
+            }
+        }
     }
 }
 
