@@ -61,8 +61,11 @@ function initializeApp() {
 
 function setupEventListeners() {
     console.log('🔧 Setting up event listeners...');
-    // Login form
-    loginForm.addEventListener('submit', handleLogin);
+    // Login button click (instead of form submit)
+    const loginButton = document.querySelector('button[onclick="handleLoginClick()"]');
+    if (loginButton) {
+        loginButton.addEventListener('click', handleLoginClick);
+    }
     
     // Dashboard buttons
     document.getElementById('addRunBtn').addEventListener('click', showAddRunModal);
@@ -138,9 +141,7 @@ function setupEventListeners() {
 }
 
 // Authentication functions
-function handleLogin(event) {
-    event.preventDefault();
-    
+function handleLoginClick() {
     try {
         console.log('🔐 Starting login process...');
         
@@ -171,6 +172,78 @@ function handleLogin(event) {
         console.error('❌ Login error:', error);
         showLoginError('Login error: ' + error.message);
     }
+}
+
+// Keep the old function for backward compatibility
+function handleLogin(event) {
+    if (event) {
+        event.preventDefault();
+    }
+    handleLoginClick();
+}
+
+// API loading functions
+async function loadRunsFromAPI() {
+    try {
+        console.log('📊 Loading runs from API...');
+        const response = await fetch('http://localhost:3000/api/runs');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const result = await response.json();
+        
+        if (result.success) {
+            runs = result.data;
+            console.log('📊 Loaded runs from API:', runs.length);
+            renderCalendar();
+            renderRuns();
+        } else {
+            console.error('❌ Failed to load runs:', result.message);
+        }
+    } catch (error) {
+        console.error('❌ Error loading runs from API:', error);
+        console.log('🔄 Falling back to localStorage...');
+        // Fallback to localStorage sync
+        await syncWithLocalStorage();
+    }
+}
+
+async function loadLeaderboardFromAPI() {
+    try {
+        console.log('🏆 Loading leaderboard from API...');
+        const response = await fetch('http://localhost:3000/api/leaderboard');
+        if (response.ok) {
+            const result = await response.json();
+            leaderboardUsers = result.data || [];
+            console.log(`🏆 Loaded ${leaderboardUsers.length} leaderboard users from API`);
+            renderLeaderboard();
+        } else {
+            console.error('❌ Failed to load leaderboard from API');
+        }
+    } catch (error) {
+        console.error('❌ Error loading leaderboard from API:', error);
+    }
+}
+
+// Fallback functions
+async function syncWithLocalStorage() {
+    try {
+        const storedRuns = localStorage.getItem('runs');
+        if (storedRuns) {
+            runs = JSON.parse(storedRuns);
+            console.log('🔄 Loaded runs from localStorage:', runs.length);
+            renderCalendar();
+            renderRuns();
+        }
+    } catch (error) {
+        console.error('❌ Error syncing with localStorage:', error);
+    }
+}
+
+function initializeRealTimeUpdates() {
+    console.log('🔄 Real-time updates initialized');
+    // For now, just log that this is working
+    // In a real app, you'd set up WebSocket or polling here
 }
 
 function handleLogout() {
