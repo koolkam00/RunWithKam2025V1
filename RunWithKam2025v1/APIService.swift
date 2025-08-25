@@ -69,7 +69,7 @@ class APIService: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
 
     struct RunDetail: Codable {
         let id: String
-        let date: Date
+        let date: String
         let time: String
         let location: String
         let pace: String
@@ -85,9 +85,7 @@ class APIService: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
         request.setValue("no-cache", forHTTPHeaderField: "Cache-Control")
         let (data, response) = try await URLSession.shared.data(for: request)
         guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { throw APIError.serverError }
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        let env = try decoder.decode(RunDetailEnvelope.self, from: data)
+        let env = try JSONDecoder().decode(RunDetailEnvelope.self, from: data)
         return env.data
     }
 
