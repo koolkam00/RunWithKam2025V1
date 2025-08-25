@@ -13,7 +13,11 @@ struct APIResponse<T: Codable>: Codable {
 // MARK: - API Service for RunWithKam
 class APIService: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
     static let shared = APIService()
+    #if DEBUG
     private let baseURL = "http://localhost:3000/api"
+    #else
+    private let baseURL = "https://runwithkam.onrender.com/api"
+    #endif
     
     @Published var isLoading = false
     @Published var errorMessage: String?
