@@ -76,7 +76,7 @@
                     <input type="password" id="password" name="password" required>
                 </div>
                 
-                <button type="button" id="loginButton" class="btn btn-primary">
+                <button type="button" id="loginButton" class="btn btn-primary" onclick="console.log('Button clicked!'); handleLoginClick();">
                     <i class="fas fa-sign-in-alt"></i>
                     Sign In
                 </button>
@@ -84,6 +84,11 @@
                 <button type="button" onclick="clearLogin()" class="btn btn-secondary" style="margin-top: 10px;">
                     <i class="fas fa-refresh"></i>
                     Clear Login & Reload
+                </button>
+                
+                <button type="button" onclick="testLogin()" class="btn btn-secondary" style="margin-top: 10px;">
+                    <i class="fas fa-bug"></i>
+                    Test JavaScript
                 </button>
             </form>
             
@@ -306,6 +311,14 @@
         </div>
     </div>
 
-    <script src="script.js?v=1"></script>
+    <script>
+        // Test if JavaScript is working
+        console.log('🚀 Inline script loaded!');
+        window.testLogin = function() {
+            console.log('🧪 Test login function called!');
+            alert('JavaScript is working!');
+        };
+    </script>
+    <script src="script.js?v=2"></script>
 </body>
 </html>
