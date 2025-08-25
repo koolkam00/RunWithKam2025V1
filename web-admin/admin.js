@@ -39,15 +39,26 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 function showScreen(idToShow) {
     const screens = document.querySelectorAll('.screen');
-    screens.forEach(s => s.classList.remove('active'));
+    screens.forEach(s => {
+        s.classList.remove('active');
+        s.style.display = 'none';
+    });
     const el = document.getElementById(idToShow);
-    if (el) el.classList.add('active');
+    if (el) {
+        el.classList.add('active');
+        el.style.display = 'block';
+    }
 }
 
 function setupLogin() {
     const loginBtn = document.getElementById('loginButton');
     if (loginBtn) {
         loginBtn.onclick = handleLoginClick;
+        console.log('✅ Login button wired');
+    }
+    const loginForm = document.getElementById('loginForm');
+    if (loginForm) {
+        loginForm.addEventListener('submit', (e) => { e.preventDefault(); handleLoginClick(); });
     }
     // Also support pressing Enter in either field
     const u = document.getElementById('username');
