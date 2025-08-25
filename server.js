@@ -536,19 +536,26 @@ function validateAndNormalizeRunData(runData) {
 
 // Routes
 
-// GET /api/health - Health check endpoint
-app.get('/api/health', (req, res) => {
-    res.json({
+// GET /api/health - Health check endpoint (with DB connectivity)
+app.get('/api/health', async (req, res) => {
+    const health = {
         success: true,
         status: 'healthy',
         timestamp: new Date().toISOString(),
         version: '1.0.0',
-        endpoints: {
-            runs: '/api/runs',
-            leaderboard: '/api/leaderboard',
-            notifications: '/api/notifications'
+        endpoints: { runs: '/api/runs', leaderboard: '/api/leaderboard', notifications: '/api/notifications' },
+        db: { useDb: USE_DB, connected: false }
+    };
+    if (USE_DB) {
+        try {
+            const r = await pool.query('SELECT 1');
+            health.db.connected = r && r.rowCount >= 0;
+        } catch (e) {
+            health.db.connected = false;
+            health.db.error = 'db_unreachable';
         }
-    });
+    }
+    res.json(health);
 });
 
 // GET /api/runs - Get all runs
