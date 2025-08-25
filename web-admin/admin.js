@@ -1,4 +1,5 @@
 // Global variables
+const API_BASE = (typeof window !== 'undefined' ? `${window.location.origin}/api` : '/api');
 let currentRuns = [];
 let currentLeaderboard = [];
 let lastSyncTime = null;
@@ -280,7 +281,7 @@ function loadBasicData() {
     syncStatus = 'loading';
     
     // Load runs
-    fetch('http://localhost:3000/api/runs')
+    fetch(`${API_BASE}/runs`)
         .then(response => {
             console.log('📡 Runs API response status:', response.status);
             if (!response.ok) {
@@ -306,7 +307,7 @@ function loadBasicData() {
         });
     
     // Load leaderboard
-    fetch('http://localhost:3000/api/leaderboard')
+    fetch(`${API_BASE}/leaderboard`)
         .then(response => {
             console.log('📡 Leaderboard API response status:', response.status);
             if (!response.ok) {
@@ -545,7 +546,7 @@ function handleRunSubmit(event) {
         console.log('📝 Run data to submit:', runData);
         const runId = event.target.getAttribute('data-run-id');
         const isUpdate = !!runId;
-        const url = isUpdate ? `http://localhost:3000/api/runs/${runId}` : 'http://localhost:3000/api/runs';
+        const url = isUpdate ? `${API_BASE}/runs/${runId}` : `${API_BASE}/runs`;
         const method = isUpdate ? 'PUT' : 'POST';
         // Send to API
         fetch(url, {
@@ -676,7 +677,7 @@ function openEditUser(userId) {
 
 function deleteUser(userId) {
     if (!confirm('Delete this user?')) return;
-    fetch(`http://localhost:3000/api/leaderboard/${userId}`, { method: 'DELETE' })
+    fetch(`${API_BASE}/leaderboard/${userId}`, { method: 'DELETE' })
       .then(r => { if (!r.ok) throw new Error('Delete failed'); return r.json(); })
       .then(() => { loadBasicData(); })
       .catch(err => { console.error(err); alert('Failed to delete user'); });
@@ -693,7 +694,7 @@ function incrementUserRuns(userId, delta) {
         appUserId: user.appUserId,
         isRegistered: user.isRegistered
     };
-    fetch(`http://localhost:3000/api/leaderboard/${userId}`, {
+    fetch(`${API_BASE}/leaderboard/${userId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -714,7 +715,7 @@ function incrementUserMiles(userId, deltaMiles) {
         appUserId: user.appUserId,
         isRegistered: user.isRegistered
     };
-    fetch(`http://localhost:3000/api/leaderboard/${userId}`, {
+    fetch(`${API_BASE}/leaderboard/${userId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -761,7 +762,7 @@ function handleLeaderboardSubmit(event) {
         
         const userId = event.target.getAttribute('data-user-id');
         const isUpdate = !!userId;
-        const url = isUpdate ? `http://localhost:3000/api/leaderboard/${userId}` : 'http://localhost:3000/api/leaderboard';
+        const url = isUpdate ? `${API_BASE}/leaderboard/${userId}` : `${API_BASE}/leaderboard`;
         const method = isUpdate ? 'PUT' : 'POST';
         // Send to API
         fetch(url, {
