@@ -173,10 +173,6 @@ class APIService: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
         req.httpBody = try JSONEncoder().encode(body)
         let (data, response) = try await URLSession.shared.data(for: req)
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw APIError.serverError }
-        do {
-            let env = try JSONDecoder().decode(LeaderboardResponse.self, from: data)
-            // Not the right envelope; fallback to direct decode of user from { success, data }
-        } catch { /* ignore */ }
         struct UpdateEnvelope: Codable { let success: Bool; let data: LeaderboardUser }
         let ue = try JSONDecoder().decode(UpdateEnvelope.self, from: data)
         return ue.data
