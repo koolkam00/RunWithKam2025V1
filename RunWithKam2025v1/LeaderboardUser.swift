@@ -8,7 +8,13 @@ struct LeaderboardUser: Codable, Identifiable {
     let totalRuns: Int
     let totalMiles: Double
     let rank: Int?
-    let lastUpdated: Date
+    let lastUpdated: String
+    
+    // Computed property to convert string to Date if needed
+    var lastUpdatedDate: Date? {
+        let formatter = ISO8601DateFormatter()
+        return formatter.date(from: lastUpdated)
+    }
     
     var fullName: String {
         "\(firstName) \(lastName)"
