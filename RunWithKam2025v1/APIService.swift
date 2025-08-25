@@ -14,7 +14,13 @@ struct APIResponse<T: Codable>: Codable {
 class APIService: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
     static let shared = APIService()
     #if DEBUG
-    private let baseURL = "http://localhost:3000/api"
+    private let baseURL: String = {
+        if let override = ProcessInfo.processInfo.environment["API_BASE_URL_OVERRIDE"], !override.isEmpty {
+            return override
+        }
+        // Default to Render in Debug unless explicitly overridden
+        return "https://runwithkam.onrender.com/api"
+    }()
     #else
     private let baseURL = "https://runwithkam.onrender.com/api"
     #endif
