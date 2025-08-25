@@ -4,9 +4,54 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Run With Kam - Admin Panel</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=1">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Fallback styles in case CSS doesn't load */
+        .screen { display: none; }
+        .screen.active { display: block; }
+        .hidden { display: none; }
+        .login-container { 
+            min-height: 100vh; 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: center; 
+            align-items: center; 
+            padding: 20px; 
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+            color: white;
+        }
+        .login-form { 
+            background: white; 
+            padding: 30px; 
+            border-radius: 20px; 
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1); 
+            width: 100%; 
+            max-width: 400px; 
+            color: #333;
+        }
+        .btn { 
+            padding: 15px 30px; 
+            border: none; 
+            border-radius: 12px; 
+            font-size: 1rem; 
+            font-weight: 600; 
+            cursor: pointer; 
+            transition: all 0.3s ease; 
+            margin: 5px;
+        }
+        .btn-primary { background: #ff6b6b; color: white; }
+        .btn-secondary { background: #6c757d; color: white; }
+        .input-group { margin-bottom: 20px; }
+        .input-group input { 
+            width: 100%; 
+            padding: 15px; 
+            border: 2px solid #e9ecef; 
+            border-radius: 12px; 
+            font-size: 1rem; 
+        }
+    </style>
 </head>
 <body>
     <!-- Login Screen -->
@@ -34,6 +79,11 @@
                 <button type="submit" class="btn btn-primary">
                     <i class="fas fa-sign-in-alt"></i>
                     Sign In
+                </button>
+                
+                <button type="button" onclick="clearLogin()" class="btn btn-secondary" style="margin-top: 10px;">
+                    <i class="fas fa-refresh"></i>
+                    Clear Login & Reload
                 </button>
             </form>
             
@@ -256,6 +306,6 @@
         </div>
     </div>
 
-    <script src="script.js"></script>
+    <script src="script.js?v=1"></script>
 </body>
 </html>
