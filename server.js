@@ -6,6 +6,8 @@ const morgan = require('morgan');
 const { v4: uuidv4 } = require('uuid');
 let Pool;
 try { ({ Pool } = require('pg')); } catch (_) { /* pg optional for local */ }
+let apn;
+try { apn = require('apn'); } catch (_) { /* optional when not sending */ }
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -78,6 +80,11 @@ async function ensureTables() {
             timestamp TEXT NOT NULL
         );
         CREATE INDEX IF NOT EXISTS idx_comments_run ON run_comments(run_id);
+        CREATE TABLE IF NOT EXISTS device_tokens (
+            token TEXT PRIMARY KEY,
+            username TEXT,
+            created_at TIMESTAMP DEFAULT NOW()
+        );
     `);
 }
 
@@ -317,6 +324,7 @@ let notifications = [];
 let leaderboardUsers = [];
 // In-memory RSVPs per runId
 let runRsvps = {}; // { [runId]: [{ id, runId, firstName, lastName, username, status, timestamp }] }
+let deviceTokens = []; // memory fallback
 
 // Helper function to send notifications to all users
 function sendRunNotification(run) {
@@ -352,6 +360,50 @@ function sendRunNotification(run) {
     // For now, we'll store them and clients can poll for updates
     
     return notification;
+}
+
+async function sendPushNewRun(run) {
+    if (!apn) return;
+    const key = process.env.APNS_KEY;
+    const keyId = process.env.APNS_KEY_ID;
+    const teamId = process.env.APNS_TEAM_ID;
+    const bundleId = process.env.APNS_BUNDLE_ID;
+    if (!key || !keyId || !teamId || !bundleId) return;
+    try {
+        const provider = new apn.Provider({
+            token: { key, keyId, teamId },
+            production: process.env.NODE_ENV === 'production'
+        });
+        const note = new apn.Notification();
+        note.topic = bundleId;
+        note.alert = {
+            title: 'New Run Scheduled! 🏃‍♂️',
+            body: `${run.location} on ${new Date(run.date).toLocaleString('en-US', { hour: 'numeric', minute: '2-digit' })}`
+        };
+        note.sound = 'default';
+        note.payload = { runId: run.id };
+
+        let tokens = [];
+        if (USE_DB) {
+            const { rows } = await pool.query('SELECT token FROM device_tokens');
+            tokens = rows.map(r => r.token);
+        } else {
+            tokens = deviceTokens;
+        }
+        if (tokens.length === 0) { await provider.shutdown(); return; }
+        const response = await provider.send(note, tokens);
+        // Remove invalid tokens
+        if (USE_DB && response.failed && response.failed.length) {
+            for (const f of response.failed) {
+                if (f.device) {
+                    await pool.query('DELETE FROM device_tokens WHERE token=$1', [f.device]);
+                }
+            }
+        }
+        await provider.shutdown();
+    } catch (e) {
+        console.error('❌ APNs send error:', e);
+    }
 }
 
 // Function to normalize existing run dates to ISO format
@@ -672,6 +724,8 @@ app.post('/api/runs', async (req, res) => {
             runs.push(newRun);
         }
         const notification = sendRunNotification(newRun);
+        // Push notification via APNs
+        await sendPushNewRun(newRun);
         res.status(201).json({ success: true, data: newRun, notification, count: 1, message: 'Run created successfully' });
     } catch (error) {
         res.status(400).json({ success: false, data: null, count: 0, message: error.message });
@@ -967,6 +1021,36 @@ app.get('/api/leaderboard', (req, res) => {
     } catch (error) {
         console.error('❌ Error getting leaderboard:', error);
         res.status(500).json({ success: false, error: error.message, timestamp: new Date().toISOString(), version: '1.0.0' });
+    }
+});
+
+// Device token registration for push
+app.post('/api/devices/register', async (req, res) => {
+    try {
+        const { token, username } = req.body || {};
+        if (!token) return res.status(400).json({ success: false, message: 'Missing token' });
+        if (USE_DB) {
+            await pool.query('INSERT INTO device_tokens (token, username) VALUES ($1,$2) ON CONFLICT (token) DO UPDATE SET username=EXCLUDED.username', [token, username || null]);
+        } else {
+            if (!deviceTokens.includes(token)) deviceTokens.push(token);
+        }
+        res.json({ success: true, message: 'Registered' });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+app.post('/api/devices/unregister', async (req, res) => {
+    try {
+        const { token } = req.body || {};
+        if (!token) return res.status(400).json({ success: false, message: 'Missing token' });
+        if (USE_DB) {
+            await pool.query('DELETE FROM device_tokens WHERE token=$1', [token]);
+        } else {
+            deviceTokens = deviceTokens.filter(t => t !== token);
+        }
+        res.json({ success: true, message: 'Unregistered' });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
     }
 });
 
