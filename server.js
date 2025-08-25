@@ -128,6 +128,9 @@ async function dbUpdateRun(updatedRun) {
 }
 
 async function dbDeleteRun(runId) {
+    // Delete RSVPs and comments for this run first, then the run
+    await pool.query('DELETE FROM rsvps WHERE run_id = $1', [runId]);
+    await pool.query('DELETE FROM run_comments WHERE run_id = $1', [runId]);
     await pool.query('DELETE FROM runs WHERE id = $1', [runId]);
 }
 

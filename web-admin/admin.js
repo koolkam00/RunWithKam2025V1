@@ -501,7 +501,7 @@ function openDeleteRun(runId) {
         confirmBtn.onclick = null; cancelBtn.onclick = null; closeBtn.onclick = null;
     };
     confirmBtn.onclick = () => {
-        fetch(`http://localhost:3000/api/runs/${runId}`, { method: 'DELETE' })
+        fetch(`${API_BASE}/runs/${runId}`, { method: 'DELETE' })
           .then(r => { if (!r.ok) throw new Error('Delete failed'); return r.json(); })
           .then(() => { cleanup(); loadBasicData(); })
           .catch(err => { console.error(err); alert('Failed to delete run'); });
