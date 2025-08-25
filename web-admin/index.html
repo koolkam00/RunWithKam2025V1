@@ -51,53 +51,52 @@
             border-radius: 12px; 
             font-size: 1rem; 
         }
+        
+        .welcome-header {
+            text-align: center;
+            padding: 40px 20px;
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+            color: white;
+            margin-bottom: 20px;
+        }
+        
+        .welcome-header .logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
+        
+        .welcome-header .logo i {
+            font-size: 3rem;
+            color: white;
+        }
+        
+        .welcome-header .logo h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: white;
+        }
+        
+        .welcome-header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
     </style>
 </head>
 <body>
-    <!-- Login Screen -->
-    <div id="loginScreen" class="screen active">
-        <div class="login-container">
-            <div class="login-header">
-                <div class="logo">
-                    <i class="fas fa-running"></i>
-                    <h1>Run With Kam</h1>
-                </div>
-                <p>Admin Panel</p>
-            </div>
-            
-            <form id="loginForm" class="login-form" onsubmit="return false;">
-                <div class="input-group">
-                    <label for="username">Username</label>
-                    <input type="text" id="username" name="username" required>
-                </div>
-                
-                <div class="input-group">
-                    <label for="password">Password</label>
-                    <input type="password" id="password" name="password" required>
-                </div>
-                
-                <button type="button" id="loginButton" class="btn btn-primary" onclick="handleLoginClick()">
-                    <i class="fas fa-sign-in-alt"></i>
-                    Sign In
-                </button>
-                
-                <button type="button" onclick="clearLogin()" class="btn btn-secondary" style="margin-top: 10px;">
-                    <i class="fas fa-refresh"></i>
-                    Clear Login & Reload
-                </button>
-                
-                <button type="button" onclick="testLogin()" class="btn btn-secondary" style="margin-top: 10px;">
-                    <i class="fas fa-bug"></i>
-                    Test JavaScript
-                </button>
-            </form>
-            
-            <div id="loginError" class="error-message hidden"></div>
+    <!-- Welcome Header -->
+    <div class="welcome-header">
+        <div class="logo">
+            <i class="fas fa-running"></i>
+            <h1>Run With Kam</h1>
         </div>
+        <p>Admin Panel - Direct Access</p>
     </div>
 
     <!-- Main Admin Dashboard -->
-    <div id="dashboardScreen" class="screen">
+    <div id="dashboardScreen">
         <header class="dashboard-header">
             <div class="header-left">
                 <h1><i class="fas fa-running"></i> Run With Kam Admin</h1>
@@ -312,41 +311,20 @@
     </div>
 
     <script>
-        // Simple working login system
-        console.log('🚀 Inline script loaded!');
+        // Direct access admin panel
+        console.log('🚀 Admin panel loaded - direct access enabled!');
         
         // Test function
         window.testLogin = function() {
-            console.log('🧪 Test login function called!');
+            console.log('🧪 Test function called!');
             alert('JavaScript is working!');
         };
         
-        // Simple login function
-        window.handleLoginClick = function() {
-            console.log('🔐 Login button clicked!');
-            
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
-            
-            console.log('Username:', username, 'Password:', password);
-            
-            if (username === 'admin' && password === 'runwithkam2025') {
-                console.log('✅ Login successful!');
-                
-                // Hide login screen
-                document.getElementById('loginScreen').style.display = 'none';
-                
-                // Show dashboard
-                document.getElementById('dashboardScreen').style.display = 'block';
-                
-                // Load some basic data
-                loadBasicData();
-                
-            } else {
-                console.log('❌ Login failed!');
-                alert('Invalid username or password. Use: admin / runwithkam2025');
-            }
-        };
+        // Load data automatically when page loads
+        window.addEventListener('load', function() {
+            console.log('📊 Page loaded, loading data automatically...');
+            loadBasicData();
+        });
         
         // Load basic data
         function loadBasicData() {
@@ -402,16 +380,9 @@
                         <strong>${user.firstName} ${user.lastName}</strong><br>
                         Runs: ${user.totalRuns} | Miles: ${user.totalMiles}
                     </div>
-                `).join('');
+                `);
             }
         }
-        
-        // Clear login function
-        window.clearLogin = function() {
-            console.log('🧹 Clearing login...');
-            localStorage.removeItem('adminLoggedIn');
-            location.reload();
-        };
         
         console.log('✅ All functions loaded!');
     </script>
