@@ -52,6 +52,10 @@ async function ensureTables() {
             app_user_id TEXT,
             is_registered BOOLEAN NOT NULL DEFAULT false
         );
+        ALTER TABLE leaderboard_users ADD COLUMN IF NOT EXISTS photo_url TEXT;
+        ALTER TABLE leaderboard_users ADD COLUMN IF NOT EXISTS bio TEXT;
+        ALTER TABLE leaderboard_users ADD COLUMN IF NOT EXISTS pace TEXT;
+        ALTER TABLE leaderboard_users ADD COLUMN IF NOT EXISTS preferred_boroughs TEXT;
         CREATE TABLE IF NOT EXISTS rsvps (
             id UUID PRIMARY KEY,
             run_id UUID NOT NULL REFERENCES runs(id) ON DELETE CASCADE,
@@ -62,6 +66,16 @@ async function ensureTables() {
             timestamp TEXT NOT NULL
         );
         CREATE INDEX IF NOT EXISTS idx_rsvps_run ON rsvps(run_id);
+        CREATE TABLE IF NOT EXISTS run_comments (
+            id UUID PRIMARY KEY,
+            run_id UUID NOT NULL REFERENCES runs(id) ON DELETE CASCADE,
+            first_name TEXT NOT NULL,
+            last_name TEXT NOT NULL,
+            username TEXT,
+            text TEXT NOT NULL,
+            timestamp TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_comments_run ON run_comments(run_id);
     `);
 }
 
@@ -75,6 +89,20 @@ async function dbGetRunWithRsvps(runId) {
     if (runRes.rowCount === 0) return null;
     const rsvpsRes = await pool.query('SELECT id, run_id AS "runId", first_name AS "firstName", last_name AS "lastName", username, status, timestamp FROM rsvps WHERE run_id = $1 ORDER BY timestamp DESC', [runId]);
     return { ...runRes.rows[0], rsvps: rsvpsRes.rows };
+}
+
+async function dbGetComments(runId) {
+    const { rows } = await pool.query('SELECT id, run_id AS "runId", first_name AS "firstName", last_name AS "lastName", username, text, timestamp FROM run_comments WHERE run_id=$1 ORDER BY timestamp ASC', [runId]);
+    return rows;
+}
+
+async function dbCreateComment(comment) {
+    await pool.query(
+        `INSERT INTO run_comments (id, run_id, first_name, last_name, username, text, timestamp)
+         VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+        [comment.id, comment.runId, comment.firstName, comment.lastName, comment.username, comment.text, comment.timestamp]
+    );
+    return comment;
 }
 
 async function dbCreateRun(newRun) {
@@ -106,7 +134,7 @@ async function dbGetLeaderboard(includeAll) {
     const { rows } = await pool.query(
         `SELECT id, first_name AS "firstName", last_name AS "lastName", username, total_runs AS "totalRuns",
                 total_miles AS "totalMiles", last_updated AS "lastUpdated", app_user_id AS "appUserId",
-                is_registered AS "isRegistered"
+                is_registered AS "isRegistered", photo_url AS "photoUrl", bio, pace, preferred_boroughs AS "preferredBoroughs"
          FROM leaderboard_users ${includeAll ? '' : 'WHERE is_registered = true'} ORDER BY total_miles DESC`
     );
     return rows;
@@ -114,9 +142,9 @@ async function dbGetLeaderboard(includeAll) {
 
 async function dbCreateLeaderboardUser(user) {
     await pool.query(
-        `INSERT INTO leaderboard_users (id, first_name, last_name, username, total_runs, total_miles, last_updated, app_user_id, is_registered)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-        [user.id, user.firstName, user.lastName, user.username, user.totalRuns, user.totalMiles, user.lastUpdated, user.appUserId, user.isRegistered]
+        `INSERT INTO leaderboard_users (id, first_name, last_name, username, total_runs, total_miles, last_updated, app_user_id, is_registered, photo_url, bio, pace, preferred_boroughs)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+        [user.id, user.firstName, user.lastName, user.username, user.totalRuns, user.totalMiles, user.lastUpdated, user.appUserId, user.isRegistered, user.photoUrl || null, user.bio || null, user.pace || null, user.preferredBoroughs || null]
     );
     return user;
 }
@@ -126,12 +154,15 @@ async function dbUpdateLeaderboardUser(userId, patch) {
     const now = new Date().toISOString();
     await pool.query(
         `UPDATE leaderboard_users SET first_name=$2, last_name=$3, total_runs=$4, total_miles=$5, last_updated=$6,
-                app_user_id=COALESCE($7, app_user_id), is_registered=COALESCE($8, is_registered) WHERE id=$1`,
-        [userId, firstName, lastName, totalRuns, totalMiles, now, appUserId ?? null, typeof isRegistered === 'boolean' ? isRegistered : null]
+                app_user_id=COALESCE($7, app_user_id), is_registered=COALESCE($8, is_registered),
+                photo_url=COALESCE($9, photo_url), bio=COALESCE($10, bio), pace=COALESCE($11, pace), preferred_boroughs=COALESCE($12, preferred_boroughs)
+         WHERE id=$1`,
+        [userId, firstName, lastName, totalRuns, totalMiles, now, appUserId ?? null, typeof isRegistered === 'boolean' ? isRegistered : null, patch.photoUrl ?? null, patch.bio ?? null, patch.pace ?? null, patch.preferredBoroughs ?? null]
     );
     const { rows } = await pool.query(
         `SELECT id, first_name AS "firstName", last_name AS "lastName", username, total_runs AS "totalRuns",
-                total_miles AS "totalMiles", last_updated AS "lastUpdated", app_user_id AS "appUserId", is_registered AS "isRegistered"
+                total_miles AS "totalMiles", last_updated AS "lastUpdated", app_user_id AS "appUserId", is_registered AS "isRegistered",
+                photo_url AS "photoUrl", bio, pace, preferred_boroughs AS "preferredBoroughs"
          FROM leaderboard_users WHERE id=$1`,
         [userId]
     );
@@ -161,6 +192,17 @@ async function dbCreateOrUpdateRSVP(runId, entry) {
         , [entry.id, runId, entry.firstName, entry.lastName, entry.username, entry.status, entry.timestamp]
     );
     return entry;
+}
+
+// --- Profanity filter (basic) ---
+const bannedWords = ['fuck','shit','bitch','asshole','cunt'];
+function sanitizeProfanity(text) {
+    let result = text || '';
+    for (const w of bannedWords) {
+        const re = new RegExp(`\\b${w}\\b`, 'gi');
+        result = result.replace(re, '*'.repeat(w.length));
+    }
+    return result;
 }
 
 // Timezone helpers: Convert America/New_York wall time to UTC ISO string reliably
@@ -772,10 +814,42 @@ app.post('/api/runs/:id/rsvp', async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 });
+
+// GET /api/runs/:id/comments - List comments for a run
+app.get('/api/runs/:id/comments', async (req, res) => {
+    try {
+        const runId = req.params.id;
+        if (USE_DB) {
+            const comments = await dbGetComments(runId);
+            return res.json({ success: true, data: comments, count: comments.length, message: 'Comments retrieved' });
+        }
+        // memory fallback
+        return res.json({ success: true, data: [], count: 0, message: 'Comments retrieved' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// POST /api/runs/:id/comments - Add comment with profanity filtering
+app.post('/api/runs/:id/comments', async (req, res) => {
+    try {
+        const runId = req.params.id;
+        const { firstName, lastName, username, text } = req.body || {};
+        if (!firstName || !lastName || !text) return res.status(400).json({ success: false, message: 'Missing firstName/lastName/text' });
+        const filtered = sanitizeProfanity(String(text));
+        const comment = { id: uuidv4(), runId, firstName: String(firstName).trim(), lastName: String(lastName).trim(), username: username ? String(username).trim().toLowerCase() : null, text: filtered, timestamp: new Date().toISOString() };
+        if (USE_DB) {
+            await dbCreateComment(comment);
+        }
+        res.status(201).json({ success: true, data: comment, count: 1, message: 'Comment added' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
 // POST /api/users/create - Create account with firstName, lastName, username
 app.post('/api/users/create', async (req, res) => {
     try {
-        const { firstName, lastName, username } = req.body || {};
+        const { firstName, lastName, username, photoUrl, bio, pace, preferredBoroughs } = req.body || {};
         if (!firstName || !lastName || !username) {
             return res.status(400).json({ success: false, message: 'Missing firstName, lastName or username' });
         }
@@ -801,7 +875,11 @@ app.post('/api/users/create', async (req, res) => {
             totalMiles: 0,
             lastUpdated: new Date().toISOString(),
             appUserId: null,
-            isRegistered: true
+            isRegistered: true,
+            photoUrl: photoUrl || null,
+            bio: bio || null,
+            pace: pace || null,
+            preferredBoroughs: preferredBoroughs || null
         };
         if (USE_DB) {
             await dbCreateLeaderboardUser(user);
@@ -880,7 +958,7 @@ app.get('/api/leaderboard', (req, res) => {
 // POST /api/leaderboard - Create new leaderboard user
 app.post('/api/leaderboard', async (req, res) => {
     try {
-        const { firstName, lastName, totalRuns, totalMiles, appUserId, isRegistered, username } = req.body;
+        const { firstName, lastName, totalRuns, totalMiles, appUserId, isRegistered, username, photoUrl, bio, pace, preferredBoroughs } = req.body;
         if (!firstName || !lastName || totalRuns === undefined || totalMiles === undefined) {
             return res.status(400).json({ success: false, error: 'Missing required fields: firstName, lastName, totalRuns, totalMiles', timestamp: new Date().toISOString(), version: '1.0.0' });
         }
@@ -893,7 +971,11 @@ app.post('/api/leaderboard', async (req, res) => {
             totalMiles: parseFloat(totalMiles) || 0,
             lastUpdated: new Date().toISOString(),
             appUserId: appUserId || null,
-            isRegistered: !!isRegistered
+            isRegistered: !!isRegistered,
+            photoUrl: photoUrl || null,
+            bio: bio || null,
+            pace: pace || null,
+            preferredBoroughs: preferredBoroughs || null
         };
         if (USE_DB) {
             await dbCreateLeaderboardUser(newUser);
