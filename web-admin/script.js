@@ -16,23 +16,8 @@ let editingRunId = null;
 let editingUserId = null;
 let isEditingUser = false;
 
-// DOM elements
-const loginScreen = document.getElementById('loginScreen');
-const dashboardScreen = document.getElementById('dashboardScreen');
-const loginForm = document.getElementById('loginForm');
-const loginError = document.getElementById('loginError');
-const currentMonthElement = document.getElementById('currentMonth');
-const calendarDaysElement = document.getElementById('calendarDays');
-const selectedDateElement = document.getElementById('selectedDate');
-const runsListElement = document.getElementById('runsList');
-const runModal = document.getElementById('runModal');
-const runForm = document.getElementById('runForm');
-const modalTitle = document.getElementById('modalTitle');
-const deleteModal = document.getElementById('deleteModal');
-const leaderboardModal = document.getElementById('leaderboardModal');
-const leaderboardForm = document.getElementById('leaderboardForm');
-const leaderboardModalTitle = document.getElementById('leaderboardModalTitle');
-const leaderboardContainer = document.getElementById('leaderboardContainer');
+// DOM elements - will be initialized after DOM loads
+let loginScreen, dashboardScreen, loginForm, loginError, currentMonthElement, calendarDaysElement, selectedDateElement, runsListElement, runModal, runForm, modalTitle, deleteModal, leaderboardModal, leaderboardForm, leaderboardModalTitle, leaderboardContainer;
 
 // Authentication
 const ADMIN_CREDENTIALS = {
@@ -43,6 +28,9 @@ const ADMIN_CREDENTIALS = {
 // Initialize the app
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🚀 DOM loaded, initializing app...');
+    
+    // Initialize DOM elements
+    initializeDOMElements();
     
     // Set up login button immediately
     const loginButton = document.getElementById('loginButton');
@@ -55,6 +43,28 @@ document.addEventListener('DOMContentLoaded', function() {
     
     initializeApp();
 });
+
+function initializeDOMElements() {
+    console.log('🔧 Initializing DOM elements...');
+    loginScreen = document.getElementById('loginScreen');
+    dashboardScreen = document.getElementById('dashboardScreen');
+    loginForm = document.getElementById('loginForm');
+    loginError = document.getElementById('loginError');
+    currentMonthElement = document.getElementById('currentMonth');
+    calendarDaysElement = document.getElementById('calendarDays');
+    selectedDateElement = document.getElementById('selectedDate');
+    runsListElement = document.getElementById('runsList');
+    runModal = document.getElementById('runModal');
+    runForm = document.getElementById('runForm');
+    modalTitle = document.getElementById('modalTitle');
+    deleteModal = document.getElementById('deleteModal');
+    leaderboardModal = document.getElementById('leaderboardModal');
+    leaderboardForm = document.getElementById('leaderboardForm');
+    leaderboardModalTitle = document.getElementById('leaderboardModalTitle');
+    leaderboardContainer = document.getElementById('leaderboardContainer');
+    
+    console.log('✅ DOM elements initialized');
+}
 
 function initializeApp() {
     console.log('🚀 Initializing app...');
