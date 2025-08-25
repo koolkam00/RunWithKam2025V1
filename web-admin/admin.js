@@ -261,7 +261,7 @@ function displayRuns(runs) {
         runsList.innerHTML = runs.map(run => `
             <div style="border: 1px solid #ccc; padding: 10px; margin: 5px; border-radius: 5px;">
                 <strong>${run.location}</strong> - ${run.time}<br>
-                Date: ${new Date(run.date).toLocaleDateString('en-US', { timeZone: 'America/New_York' })}<br>
+                Date: ${new Date(run.date).toLocaleDateString('en-US', { timeZone: 'America/New_York' })} at ${run.time}<br>
                 Pace: ${run.pace}
             </div>
         `).join('');

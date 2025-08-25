@@ -38,15 +38,25 @@ app.use((req, res, next) => {
 });
 
 // Helper function to create properly formatted dates in Eastern Time
-function createFormattedDate(daysFromNow) {
+function createFormattedDate(daysFromNow, timeString = "06:00") {
     const date = new Date();
     date.setDate(date.getDate() + daysFromNow);
     
-    // Set time to midnight Eastern Time (UTC-5) to ensure dates display correctly
+    // Parse the time to get hours and minutes
+    let timeHours = 6; // Default to 6 AM
+    let timeMinutes = 0;
+    
+    if (timeString && timeString.includes(':')) {
+        const timeParts = timeString.split(':');
+        timeHours = parseInt(timeParts[0], 10);
+        timeMinutes = parseInt(timeParts[1], 10);
+    }
+    
+    // Set time to the specified time in Eastern Time (UTC-5) to ensure dates display correctly
     const year = date.getFullYear();
     const month = date.getMonth();
     const day = date.getDate();
-    const easternDate = new Date(Date.UTC(year, month, day, 5, 0, 0, 0));
+    const easternDate = new Date(Date.UTC(year, month, day, timeHours + 5, timeMinutes, 0, 0));
     
     return easternDate.toISOString();
 }
@@ -107,12 +117,22 @@ function normalizeExistingRunDates() {
                 const month = parsedDate.getMonth();
                 const day = parsedDate.getDate();
                 
-                // Create date in Eastern Time (UTC-5) by adding 5 hours to get to midnight EST
-                const easternDate = new Date(Date.UTC(year, month, day, 5, 0, 0, 0));
+                // Parse the time to get hours and minutes
+                let timeHours = 0;
+                let timeMinutes = 0;
+                
+                if (run.time && run.time.includes(':')) {
+                    const timeParts = run.time.split(':');
+                    timeHours = parseInt(timeParts[0], 10);
+                    timeMinutes = parseInt(timeParts[1], 10);
+                }
+                
+                // Create date in Eastern Time (UTC-5) by adding 5 hours to get to the correct EST time
+                const easternDate = new Date(Date.UTC(year, month, day, timeHours + 5, timeMinutes, 0, 0));
                 const isoDate = easternDate.toISOString();
                 
                 if (run.date !== isoDate) {
-                    console.log(`📅 Normalizing date to Eastern Time: ${run.date} -> ${isoDate}`);
+                    console.log(`📅 Normalizing date and time to Eastern Time: ${run.date} ${run.time} -> ${isoDate}`);
                     run.date = isoDate;
                 }
             }
@@ -128,7 +148,7 @@ function initializeSampleData() {
     runs = [
         {
             id: uuidv4(),
-            date: createFormattedDate(1), // Tomorrow
+            date: createFormattedDate(1, '06:00'), // Tomorrow
             time: '06:00',
             location: 'Central Park',
             pace: '8:30/mile',
@@ -136,7 +156,7 @@ function initializeSampleData() {
         },
         {
             id: uuidv4(),
-            date: createFormattedDate(3), // 3 days from now
+            date: createFormattedDate(3, '17:30'), // 3 days from now
             time: '17:30',
             location: 'Brooklyn Bridge',
             pace: '9:00/mile',
@@ -144,7 +164,7 @@ function initializeSampleData() {
         },
         {
             id: uuidv4(),
-            date: createFormattedDate(7), // 7 days from now
+            date: createFormattedDate(7, '07:00'), // 7 days from now
             time: '07:00',
             location: 'Prospect Park',
             pace: '7:30/mile',
@@ -217,17 +237,27 @@ function validateAndNormalizeRunData(runData) {
             throw new Error('Invalid date format');
         }
         
-        // Convert to Eastern Time to ensure dates display correctly
-        // When user enters "2025-08-27", we want it to show as August 27th in EST
+        // Parse the time to get hours and minutes
+        let timeHours = 0;
+        let timeMinutes = 0;
+        
+        if (runData.time && runData.time.includes(':')) {
+            const timeParts = runData.time.split(':');
+            timeHours = parseInt(timeParts[0], 10);
+            timeMinutes = parseInt(timeParts[1], 10);
+        }
+        
+        // Convert to Eastern Time by combining date and time
+        // When user enters "2025-08-27" and "17:30", we want it to show as August 27th at 5:30 PM EST
         const year = parsedDate.getFullYear();
         const month = parsedDate.getMonth();
         const day = parsedDate.getDate();
         
-        // Create date in Eastern Time (UTC-5) by adding 5 hours to get to midnight EST
-        const easternDate = new Date(Date.UTC(year, month, day, 5, 0, 0, 0));
+        // Create date in Eastern Time (UTC-5) by adding 5 hours to get to the correct EST time
+        const easternDate = new Date(Date.UTC(year, month, day, timeHours + 5, timeMinutes, 0, 0));
         normalizedDate = easternDate.toISOString();
         
-        console.log(`📅 Date normalized to Eastern Time: ${runData.date} -> ${normalizedDate}`);
+        console.log(`📅 Date and time normalized to Eastern Time: ${runData.date} ${runData.time} -> ${normalizedDate}`);
     } catch (error) {
         throw new Error('Invalid date format. Please use YYYY-MM-DD format (e.g., 2025-08-27)');
     }
