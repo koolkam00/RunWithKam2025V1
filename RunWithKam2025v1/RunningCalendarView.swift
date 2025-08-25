@@ -402,6 +402,16 @@ struct RunCardView: View {
         }
     }
 
+    // Listen for deep link to open specific run detail
+    init(run: ScheduledRun) {
+        self.run = run
+        NotificationCenter.default.addObserver(forName: .openRunDetail, object: nil, queue: .main) { note in
+            if let runId = note.userInfo?["runId"] as? String, runId == run.id {
+                Task { await self.loadRunDetail() }
+            }
+        }
+    }
+
     private func submitRSVP(status: String) {
         loadingRSVP = true
         Task {

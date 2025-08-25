@@ -764,4 +764,5 @@ enum APIError: Error, LocalizedError {
 extension Notification.Name {
     static let runsUpdated = Notification.Name("runsUpdated")
     static let showInAppNotification = Notification.Name("showInAppNotification")
+    static let openRunDetail = Notification.Name("openRunDetail")
 }

@@ -36,4 +36,13 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
         print("❌ Failed to register for remote notifications: \(error)")
     }
+
+    // Handle push tap to deep-link to a specific run
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+        let info = response.notification.request.content.userInfo
+        if let runId = info["runId"] as? String, !runId.isEmpty {
+            NotificationCenter.default.post(name: .openRunDetail, object: nil, userInfo: ["runId": runId])
+        }
+        completionHandler()
+    }
 }
