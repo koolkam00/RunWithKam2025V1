@@ -5,8 +5,6 @@ struct ProfileView: View {
     @AppStorage("lastName") private var lastName: String = ""
     @AppStorage("username") private var username: String = ""
 
-    @State private var bio: String = ""
-    @State private var pace: String = ""
     @State private var favoritePier: String = ""
 
     @State private var isSaving = false
@@ -20,8 +18,6 @@ struct ProfileView: View {
                     TextField("Last Name", text: $lastName)
                     TextField("Username", text: $username)
                         .disabled(true)
-                    TextField("Bio", text: $bio)
-                    TextField("Pace (e.g. 8:30/mile)", text: $pace)
                     TextField("Favorite Pier", text: $favoritePier)
                 }
 
@@ -67,8 +63,8 @@ struct ProfileView: View {
                         appUserId: nil,
                         isRegistered: true,
                         photoUrl: nil,
-                        bio: bio,
-                        pace: pace,
+                        bio: nil,
+                        pace: nil,
                         favoritePier: favoritePier
                     )
                     message = "Profile saved."
