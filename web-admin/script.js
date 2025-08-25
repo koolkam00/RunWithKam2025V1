@@ -43,21 +43,24 @@ const ADMIN_CREDENTIALS = {
 // Initialize the app
 document.addEventListener('DOMContentLoaded', function() {
     initializeApp();
-    setupEventListeners();
-    loadSampleData();
-    renderCalendar();
-    renderRuns();
 });
 
 function initializeApp() {
+    console.log('🚀 Initializing app...');
     // Check if user is already logged in
     const isLoggedIn = localStorage.getItem('adminLoggedIn');
+    console.log('🔑 Login status:', isLoggedIn);
     if (isLoggedIn === 'true') {
+        console.log('👤 User already logged in, showing dashboard...');
         showDashboard();
+    } else {
+        console.log('🔒 User not logged in, setting up login form...');
+        setupEventListeners();
     }
 }
 
 function setupEventListeners() {
+    console.log('🔧 Setting up event listeners...');
     // Login form
     loginForm.addEventListener('submit', handleLogin);
     
@@ -91,6 +94,13 @@ function setupEventListeners() {
         console.log('EST Display:', utcDate.toLocaleDateString('en-US', { timeZone: 'America/New_York' }));
         console.log('UTC Display:', utcDate.toLocaleDateString('en-US', { timeZone: 'UTC' }));
         console.log('Date object:', utcDate);
+    };
+    
+    // Add clear localStorage function for debugging
+    window.clearLogin = function() {
+        localStorage.removeItem('adminLoggedIn');
+        console.log('🧹 Cleared login state');
+        location.reload();
     };
     
     // Set today's date as placeholder for new runs
@@ -134,11 +144,15 @@ function handleLogin(event) {
     const username = document.getElementById('username').value;
     const password = document.getElementById('password').value;
     
+    console.log('🔐 Login attempt:', username);
+    
     if (username === ADMIN_CREDENTIALS.username && password === ADMIN_CREDENTIALS.password) {
+        console.log('✅ Login successful, showing dashboard...');
         localStorage.setItem('adminLoggedIn', 'true');
         showDashboard();
         hideLoginError();
     } else {
+        console.log('❌ Login failed');
         showLoginError('Invalid username or password');
     }
 }
@@ -147,11 +161,6 @@ function handleLogout() {
     // Stop real-time updates
     cleanupRealTimeUpdates();
     
-    localStorage.removeItem("adminLoggedIn");
-    showLogin();
-    // Clear form
-    document.getElementById("username").value = "";
-    document.getElementById("password").value = "";
     localStorage.removeItem('adminLoggedIn');
     showLogin();
     // Clear form
@@ -174,8 +183,12 @@ function showLogin() {
 }
 
 function showDashboard() {
+    console.log('🔄 Showing dashboard...');
     loginScreen.classList.remove("active");
     dashboardScreen.classList.add("active");
+    
+    // Setup event listeners for dashboard
+    setupEventListeners();
     
     // Load data
     loadRunsFromAPI();
@@ -184,6 +197,7 @@ function showDashboard() {
     
     // Start real-time updates
     initializeRealTimeUpdates();
+    console.log('✅ Dashboard shown successfully');
 }
 
 // Calendar functions
