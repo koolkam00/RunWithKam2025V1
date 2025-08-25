@@ -106,8 +106,7 @@ class APIService: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
         guard let url = URL(string: "\(baseURL)/runs/\(runId)/comments") else { throw APIError.invalidURL }
         let (data, response) = try await URLSession.shared.data(from: url)
         guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { throw APIError.serverError }
-        let env = try JSONDecoder().decode(CommentsEnvelope.self, from: data)
-        return env.data
+        return try JSONDecoder().decode(CommentsEnvelope.self, from: data).data
     }
 
     func postComment(runId: String, firstName: String, lastName: String, username: String?, text: String) async throws -> Comment {
@@ -119,7 +118,6 @@ class APIService: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
         req.httpBody = try JSONEncoder().encode(body)
         let (data, response) = try await URLSession.shared.data(for: req)
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw APIError.serverError }
-        let env = try JSONDecoder().decode(RSVPEntityEnvelope.self, from: data) // placeholder decode
         // decode comment directly to avoid struct mismatch
         if let obj = try? JSONDecoder().decode([String: Comment].self, from: data), let comment = obj["data"] {
             return comment

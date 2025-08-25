@@ -54,15 +54,9 @@ struct ProfileView: View {
     private func saveProfile() {
         guard !firstName.isEmpty, !lastName.isEmpty else { message = "First and last name required"; return }
         isSaving = true
-        Task {
-            do {
-                // We don’t have the userId directly; for now, no-op if username unknown in leaderboard. In a fuller app, we’d fetch and resolve ID.
-                message = "Saved locally. Server update pending ID resolution."
-            } catch {
-                message = error.localizedDescription
-            }
-            isSaving = false
-        }
+        // No throwing work here yet; update message and end
+        self.message = "Saved locally. Server update pending ID resolution."
+        self.isSaving = false
     }
 }
 
