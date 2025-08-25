@@ -13,6 +13,54 @@ app.use(cors());
 app.use(morgan('combined'));
 app.use(express.json());
 
+// Timezone helpers: Convert America/New_York wall time to UTC ISO string reliably
+function formatInTimeZone(date, timeZone) {
+    const dtf = new Intl.DateTimeFormat('en-US', {
+        timeZone,
+        hour12: false,
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit'
+    });
+    const parts = dtf.formatToParts(date);
+    const map = {};
+    for (const part of parts) {
+        if (part.type !== 'literal') map[part.type] = part.value;
+    }
+    return {
+        year: parseInt(map.year, 10),
+        monthZero: parseInt(map.month, 10) - 1,
+        day: parseInt(map.day, 10),
+        hour: parseInt(map.hour, 10),
+        minute: parseInt(map.minute, 10),
+        second: parseInt(map.second, 10)
+    };
+}
+
+// Convert America/New_York wall time to the exact UTC instant (DST-safe)
+function easternWallTimeToISOString(year, monthZeroBased, day, hour, minute) {
+    const timeZone = 'America/New_York';
+    // Start with a UTC guess having the desired wall components
+    const utcGuessMs = Date.UTC(year, monthZeroBased, day, hour, minute, 0, 0);
+    const utcGuess = new Date(utcGuessMs);
+    // What wall time do we get in the zone for this instant?
+    const wallFromGuess = formatInTimeZone(utcGuess, timeZone);
+    // Build a UTC ms for the wall-from-guess components (interpreted as UTC)
+    const wallFromGuessMs = Date.UTC(
+        wallFromGuess.year,
+        wallFromGuess.monthZero,
+        wallFromGuess.day,
+        wallFromGuess.hour,
+        wallFromGuess.minute,
+        wallFromGuess.second
+    );
+    // Our intended wall components (interpreted as UTC)
+    const intendedWallMs = Date.UTC(year, monthZeroBased, day, hour, minute, 0, 0);
+    // Difference tells us how far off the guess is; subtract to correct
+    const diffMs = wallFromGuessMs - intendedWallMs;
+    const correctedUtcMs = utcGuessMs - diffMs;
+    return new Date(correctedUtcMs).toISOString();
+}
+
 // Serve static files from web-admin directory with cache control
 app.use(express.static('web-admin', {
     setHeaders: (res, path) => {
@@ -57,9 +105,7 @@ function createFormattedDate(daysFromNow, timeString = "06:00") {
         const year = date.getUTCFullYear();
         const month = date.getUTCMonth();
         const day = date.getUTCDate();
-        const userDate = new Date(year, month, day, timeHours, timeMinutes, 0, 0);
-      
-        return userDate.toISOString();
+        return easternWallTimeToISOString(year, month, day, timeHours, timeMinutes);
 }
 
 // In-memory data storage (replace with database in production)
@@ -140,17 +186,13 @@ function normalizeExistingRunDates() {
                     timeMinutes = parseInt(timeParts[1], 10);
                 }
                 
-                // Store the date exactly as entered without timezone conversion
-                // This ensures the date stays exactly as entered without timezone shifting
-                const userDate = new Date(year, month, day, timeHours, timeMinutes, 0, 0);
-                
-                const isoDate = userDate.toISOString();
+                // Convert America/New_York wall time to exact UTC ISO (DST-safe)
+                const isoDate = easternWallTimeToISOString(year, month, day, timeHours, timeMinutes);
                 
                 if (run.date !== isoDate) {
                     console.log(`📅 Normalizing date and time to Eastern Time: ${run.date} ${run.time} -> ${isoDate}`);
                     run.date = isoDate;
                 }
-            }
         } catch (error) {
             console.error(`❌ Error normalizing date for run ${run.id}:`, error);
         }
@@ -275,9 +317,8 @@ function validateAndNormalizeRunData(runData) {
             day = parsedDate.getUTCDate();
         }
 
-        // Build a local-time Date with the exact entered date/time
-        const userDate = new Date(year, month, day, timeHours, timeMinutes, 0, 0);
-        normalizedDate = userDate.toISOString();
+        // Convert America/New_York wall time to an exact UTC ISO (DST-safe)
+        normalizedDate = easternWallTimeToISOString(year, month, day, timeHours, timeMinutes);
 
         console.log(`📅 Date stored (no TZ shift): ${dateInput} ${runData.time} -> ${normalizedDate}`);
     } catch (error) {
