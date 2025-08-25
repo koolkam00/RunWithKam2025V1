@@ -57,7 +57,7 @@ function createFormattedDate(daysFromNow, timeString = "06:00") {
         const year = date.getFullYear();
         const month = date.getMonth();
         const day = date.getDate();
-        const userDate = new Date(Date.UTC(year, month, day, timeHours, timeMinutes, 0, 0));
+        const userDate = new Date(year, month, day, timeHours, timeMinutes, 0, 0);
       
         return userDate.toISOString();
 }
@@ -130,7 +130,7 @@ function normalizeExistingRunDates() {
                 
                 // Store the date exactly as entered without timezone conversion
                 // This ensures the date stays exactly as entered without timezone shifting
-                const userDate = new Date(Date.UTC(year, month, day, timeHours, timeMinutes, 0, 0));
+                const userDate = new Date(year, month, day, timeHours, timeMinutes, 0, 0);
                 
                 const isoDate = userDate.toISOString();
                 
@@ -256,10 +256,11 @@ function validateAndNormalizeRunData(runData) {
         const month = parsedDate.getMonth();
         const day = parsedDate.getDate();
         
-        // Create the date exactly as specified by the user in UTC
+        // Create the date exactly as specified by the user in local time
         // This ensures the date stays exactly as entered without timezone shifting
-        const userDate = new Date(Date.UTC(year, month, day, timeHours, timeMinutes, 0, 0));
+        const userDate = new Date(year, month, day, timeHours, timeMinutes, 0, 0);
         
+        // Convert to ISO string but preserve the local date/time exactly as entered
         normalizedDate = userDate.toISOString();
         
         console.log(`📅 Date and time stored exactly as entered: ${runData.date} ${runData.time} -> ${normalizedDate}`);
