@@ -278,6 +278,13 @@ struct CalendarDayView: View {
 
 struct RunCardView: View {
     let run: ScheduledRun
+    @AppStorage("firstName") private var firstName: String = ""
+    @AppStorage("lastName") private var lastName: String = ""
+    @AppStorage("username") private var username: String = ""
+    @State private var rsvpsYes: [APIService.RSVP] = []
+    @State private var rsvpsNo: [APIService.RSVP] = []
+    @State private var loadingRSVP = false
+    @State private var error: String?
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -307,10 +314,74 @@ struct RunCardView: View {
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
+
+            // RSVP actions
+            HStack(spacing: 10) {
+                Button(action: { submitRSVP(status: "yes") }) {
+                    Label("RSVP Yes", systemImage: "hand.thumbsup.fill")
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.green)
+                .disabled(loadingRSVP)
+                
+                Button(action: { submitRSVP(status: "no") }) {
+                    Label("RSVP No", systemImage: "hand.thumbsdown.fill")
+                }
+                .buttonStyle(.bordered)
+                .tint(.red)
+                .disabled(loadingRSVP)
+            }
+            .padding(.top, 6)
+
+            // RSVP lists
+            if !rsvpsYes.isEmpty || !rsvpsNo.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    if !rsvpsYes.isEmpty {
+                        Text("Going: " + rsvpsYes.map { "\($0.firstName) \($0.lastName)" }.joined(separator: ", "))
+                            .font(.caption)
+                            .foregroundColor(.green)
+                    }
+                    if !rsvpsNo.isEmpty {
+                        Text("Not going: " + rsvpsNo.map { "\($0.firstName) \($0.lastName)" }.joined(separator: ", "))
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
         }
         .padding()
         .background(Color.gray.opacity(0.1))
         .cornerRadius(12)
+        .onAppear { Task { await loadRunDetail() } }
+    }
+
+    private func loadRunDetail() async {
+        loadingRSVP = true
+        defer { loadingRSVP = false }
+        do {
+            let detail = try await APIService.shared.fetchRunDetail(runId: run.id)
+            let yes = (detail.rsvps ?? []).filter { $0.status == "yes" }
+            let no = (detail.rsvps ?? []).filter { $0.status == "no" }
+            await MainActor.run {
+                rsvpsYes = yes
+                rsvpsNo = no
+            }
+        } catch {
+            await MainActor.run { self.error = error.localizedDescription }
+        }
+    }
+
+    private func submitRSVP(status: String) {
+        loadingRSVP = true
+        Task {
+            do {
+                _ = try await APIService.shared.sendRSVP(runId: run.id, firstName: firstName, lastName: lastName, username: username.isEmpty ? nil : username, status: status)
+                await loadRunDetail()
+            } catch {
+                await MainActor.run { self.error = error.localizedDescription }
+            }
+            await MainActor.run { loadingRSVP = false }
+        }
     }
 }
 

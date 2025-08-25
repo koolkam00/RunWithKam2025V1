@@ -48,6 +48,57 @@ class APIService: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
         let decoded = try JSONDecoder().decode(CreateAccountResponse.self, from: data)
         return decoded.data
     }
+
+    // MARK: - RSVP / Run Detail
+    struct RSVP: Codable, Identifiable {
+        let id: String
+        let runId: String
+        let firstName: String
+        let lastName: String
+        let username: String?
+        let status: String // "yes" | "no"
+        let timestamp: String
+    }
+
+    struct RunDetail: Codable {
+        let id: String
+        let date: Date
+        let time: String
+        let location: String
+        let pace: String
+        let description: String
+        let rsvps: [RSVP]?
+    }
+
+    struct RunDetailEnvelope: Codable { let success: Bool; let data: RunDetail }
+
+    func fetchRunDetail(runId: String) async throws -> RunDetail {
+        guard let url = URL(string: "\(baseURL)/runs/\(runId)") else { throw APIError.invalidURL }
+        var request = URLRequest(url: url)
+        request.setValue("no-cache", forHTTPHeaderField: "Cache-Control")
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { throw APIError.serverError }
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let env = try decoder.decode(RunDetailEnvelope.self, from: data)
+        return env.data
+    }
+
+    struct RSVPRequest: Codable { let firstName: String; let lastName: String; let username: String?; let status: String }
+    struct RSVPEntityEnvelope: Codable { let success: Bool; let data: RSVP }
+
+    func sendRSVP(runId: String, firstName: String, lastName: String, username: String?, status: String) async throws -> RSVP {
+        guard let url = URL(string: "\(baseURL)/runs/\(runId)/rsvp") else { throw APIError.invalidURL }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        let body = RSVPRequest(firstName: firstName, lastName: lastName, username: username, status: status)
+        request.httpBody = try JSONEncoder().encode(body)
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else { throw APIError.serverError }
+        let decoded = try JSONDecoder().decode(RSVPEntityEnvelope.self, from: data)
+        return decoded.data
+    }
     
     // MARK: - Fetch all runs
     func fetchRuns() async throws -> [ScheduledRun] {
